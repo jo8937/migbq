@@ -59,10 +59,11 @@ pymig mig config.yml
   - 해당 Primary Key 의 min / max 를 구함. 
   
 **[3]** RDBMS 데이터를 임시 csv 파일에 저장
-  - 해당 PK 를 조건에 넣고 0부터 마지막 pk 까지 select 하고, 그 결과를 csv 에 저장
-  - ```sql
+  - 해당 PK 를 조건에 넣고 0부터 batch_size 만큼  select 하고, 그 결과를 csv 에 저장.
+  
+```sql
 	select * from tbl where idx => 1 and idx < 100;
-	```
+```
 
   - 이것을 pymig-tbl-idx-1-100 이라는 임시 압축된 csv 파일을 만들어서 임시 저장 (경로는 설정파일에)  
 
