@@ -80,6 +80,15 @@ bqmig run config.yml
 bqmig check config.yml
 ```
 
+
+#### (3) Check table count equals  
+
+```bash
+bqmig sync config.yml
+```
+
+* Primary Key base count check. 
+
 ### Run Forever 
 
 * you can add crontab 

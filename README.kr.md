@@ -41,11 +41,49 @@ pip install pymig
 
 * embulk 의 설정형식을 따라 함.
 
+### 예제
+
+* config.yml 
+
+```yml
+in:
+  type: mssql
+  host: localhost
+  user: USER
+  password: PASSWORD
+  port: 1433
+  database: DATABASE
+  tables: 
+    - tbl
+    - tbl2
+    - tbl3
+  batch_size: 50000
+  temp_csv_path: /temp/pymig_csv
+  temp_csv_path_complete: /temp/pymig_csv_complete 
+out:
+  type: bigquery
+  project: GCP_PROJECT
+  dataset: BQ_DATASET
+```
+
 ### 실행  
 
-```bash
+* 이관 
 
+```bash
 pymig mig config.yml
+```
+
+* job 확인
+
+```bash
+pymig check config.yml
+```
+
+* 최종적으로 count 가 동일한지 확인 
+
+```bash
+pymig sync config.yml
 ```
 
 ### 지속적으로 업로드가 필요하다면 crontab 에 걸어 놓기
