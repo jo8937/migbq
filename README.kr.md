@@ -23,10 +23,15 @@ RDBMS 테이블에서 Bigquery 테이블로 데이터를 조금씩 이관하는 
   - 실행할 머신에 Google Cloud SDK 설치 필요
     - https://cloud.google.com/sdk/downloads
     - https://cloud.google.com/sdk/gcloud/reference/auth/login
-
+    
+* Pymssql 환경변수
+  - http://www.pymssql.org/en/stable/
+   
 ## 설치
 
+
 ```
+export PYMSSQL_BUILD_WITH_BUNDLED_FREETDS=1
 pip install pymig
 ```
 
@@ -39,6 +44,7 @@ pip install pymig
 ### 실행  
 
 ```bash
+
 pymig mig config.yml
 ```
 

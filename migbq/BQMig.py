@@ -27,7 +27,7 @@ from peewee import *
 from peewee_mssql import MssqlDatabase  
 import __main__
 
-from migbq.migutils import get_logger
+from migbq.migutils import *
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -42,7 +42,6 @@ import uuid
 import shutil
 import yaml
 import argparse
-import lockfile
 from os import getenv
 
 class MigrationChildProcess(object):
@@ -369,7 +368,7 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'mig', 'some', 'sync', 'meta', 'retry'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
@@ -377,12 +376,19 @@ def commander(array_command=None):
     arg = parser.parse_args(args = array_command)
 
     cmd = arg.cmd
+    config_file = arg.config_file
+    
+    migconf = get_config(config_file)
+    
     custom_config_dict = {}
     
     if arg.tablenames:
+        tablenames = arg.tablenames
         custom_config_dict["in"] = {}
         custom_config_dict["in"]["tables"] = arg.tablenames 
-
+    else:
+        tablenames = migconf.source["in"]["tables"]
+        
     if arg.dataset:
         custom_config_dict["out"] = {}
         custom_config_dict["out"]["dataset"] = arg.dataset
@@ -393,7 +399,7 @@ def commander(array_command=None):
         # for crontab prevent duplicate process
         import fcntl
         import hashlib
-        md5key = hashlib.md5( os.path.basename(arg.config_file) + "-".join(arg.tablenames)).hexdigest()
+        md5key = hashlib.md5( os.path.basename(arg.config_file) + "-".join(tablenames)).hexdigest()
         lockfile = "/tmp/bqmig_%s_%s.pid" % (cmd, md5key)
         try:
             print "lock file : " + lockfile

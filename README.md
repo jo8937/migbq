@@ -25,9 +25,13 @@ RDBMS Table data upload to Bigquery table.
     - https://cloud.google.com/sdk/downloads
     - https://cloud.google.com/sdk/gcloud/reference/auth/login
 
+* Pymssql freetds
+  - http://www.pymssql.org/en/stable/
+  
 ## Install
 
 ```
+export PYMSSQL_BUILD_WITH_BUNDLED_FREETDS=1
 pip install migbq
 ```
 
