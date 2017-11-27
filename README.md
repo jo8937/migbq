@@ -52,13 +52,13 @@ pymig mig config.yml
 
 ### mig 커맨드의 동작 순서
 
-1. RDBMS 테이블 메타데이터 select
+**[1]** RDBMS 테이블 메타데이터 select
   - RDB 에서 테이블 metadata 를 불러와서 테이블 목록, 컬럼-타입목록, Primary Key 정보를 가져옴.
    
-2. RDBMS 테이블 데이터 범위 select
+**[2]** RDBMS 테이블 데이터 범위 select
   - 해당 Primary Key 의 min / max 를 구함. 
   
-3. RDBMS 데이터를 임시 csv 파일에 저장
+**[3]** RDBMS 데이터를 임시 csv 파일에 저장
   - 해당 PK 를 조건에 넣고 0부터 마지막 pk 까지 select 하고, 그 결과를 csv 에 저장
   - ```sql
 	select * from tbl where idx => 1 and idx < 100;
@@ -66,11 +66,11 @@ pymig mig config.yml
 
   - 이것을 pymig-tbl-idx-1-100 이라는 임시 압축된 csv 파일을 만들어서 임시 저장 (경로는 설정파일에)  
 
-4. 임시파일을 빅쿼리에 업로드 
+**[4]** 임시파일을 빅쿼리에 업로드 
   - (3) 에서 나온 압축 csv 파일을 빅쿼리 테이블에 upload
   - GCS 임시파일은 거치지 않음. (quota exceed 가 뜰 수 있음)
   
-5. 위의 과정으로 Primary Key 값이 max 가 될때까지 반복 
+**[5]** 위의 과정으로 Primary Key 값이 max 가 될때까지 반복 
 
 예를들면 batch_size : 100, max pk 가 321 일 경우, 이하와 같은 실행 순서를 가진다.
 이 경우 실행 순서.
