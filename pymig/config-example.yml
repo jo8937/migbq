@@ -1,0 +1,18 @@
+in:
+  type: mssql
+  host: localhost
+  user: USER
+  password: PASSWORD
+  port: 1433
+  database: DATABASE
+  tables: 
+    - tbl1
+    - tbl2
+    - tbl3
+  batch_size: 50000
+  temp_csv_path: /temp/pymig_csv
+  temp_csv_path_complete: /temp/pymig_csv_complete 
+out:
+  type: bigquery
+  project: GCP_PROJECT
+  dataset: BQ_DATASET
