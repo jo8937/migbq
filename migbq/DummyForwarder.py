@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/opt/local/bin/python2.7
 
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 from Forwarder import Forwarder
 
 class DummyForwarder(Forwarder):

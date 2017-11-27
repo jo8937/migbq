@@ -4,17 +4,17 @@ Created on 2017. 11. 27.
 @author: jo8937
 '''
 import unittest
-import pymig
-from pymig.MigrationMetadataManager import MigrationMetadataManager
-from pymig.DummyForwarder import DummyForwarder
-from pymig.BigQueryForwarder import BigQueryForwarder
-from pymig.migutils import *
-from pymig.MsSqlDatasource import MsSqlDatasource
-from pymig.MigrationSet import *
+import migbq
+from migbq.MigrationMetadataManager import MigrationMetadataManager
+from migbq.DummyForwarder import DummyForwarder
+from migbq.BigQueryForwarder import BigQueryForwarder
+from migbq.migutils import *
+from migbq.MsSqlDatasource import MsSqlDatasource
+from migbq.MigrationSet import *
 import logging
 from os import getenv
-from pymig.BigQueryJobChecker import *
-from pymig.BQMig import commander
+from migbq.BigQueryJobChecker import *
+from migbq.BQMig import commander
 
 class Struct:
     def __init__(self, **entries):
@@ -81,9 +81,9 @@ class TestMssql(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestMssql, self).__init__(*args, **kwargs)
         
-        self.datasource = MsSqlDatasource(db_config = pymig.migutils.get_connection_info(getenv("pymig_config_path")),
+        self.datasource = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
                                      meta_db_config = dict(sqlite_filename="mssql_mig_meta.sqlite"),
-                                     config = pymig.migutils.get_config(getenv("pymig_config_path"))
+                                     config = migbq.migutils.get_config(getenv("pymig_config_path"))
                                      ) 
         self.bq = DummyForwarder()
         self.datasource.log.setLevel(logging.DEBUG)
@@ -150,7 +150,7 @@ class TestMig(unittest.TestCase):
     configfile = getenv("pymig_config_path")
         
     def test_00_mig(self):    
-        commander(["mig",self.configfile])
+        commander(["run",self.configfile])
                 
     def test_01_check(self):
         commander(["check",self.configfile])

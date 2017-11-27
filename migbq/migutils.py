@@ -6,7 +6,7 @@ import os
 import logging
 
 def get_logger(name, rawData = False, timeRotate=False, dirs="log"):
-    log = logging.getLogger('pymig-log-' + name)
+    log = logging.getLogger('migbq-log-' + name)
 
     try:
         if rawData:

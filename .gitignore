@@ -28,3 +28,4 @@ pip-log.txt
 *.egg
 *.egg-info
 /dist/
+.pypirc

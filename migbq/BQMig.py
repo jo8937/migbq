@@ -3,7 +3,7 @@
 
 import sys
 import signal
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 import datetime
 
 import ujson
@@ -27,7 +27,7 @@ from peewee import *
 from peewee_mssql import MssqlDatabase  
 import __main__
 
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -427,7 +427,7 @@ def commander_executer(cmd, arg, custom_config_dict):
         mig.print_metadata()
     elif cmd == "sync":
         mig.syncdata(tablenames[0])
-    elif cmd == "mig":
+    elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()
         else:

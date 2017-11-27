@@ -20,7 +20,7 @@ from peewee import *
 
 from peewee_mssql_custom import MssqlDatabase  
 
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -786,7 +786,7 @@ class MigrationMetadataManager(MigrationRoot):
                 datasource_pk_range = (l.pkLower-1,l.pkUpper)
 
                 # 일단 파일을 미리 생성했는지 봄...                
-                temp_filename = os.path.join(conf.csvpath,"pymig-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
+                temp_filename = os.path.join(conf.csvpath,"migbq-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
                 if os.path.isfile(temp_filename):
                     self.log.info("Check CSV FILE ... %s ... ", temp_filename)            
                     linecount = self.check_gzip_csv_file_linesize(temp_filename)

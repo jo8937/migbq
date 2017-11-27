@@ -43,7 +43,7 @@ def check_job_finish(migset):
                 
                 print "jodIb : %s success" % jobId
                 
-                filename = "pymig-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
+                filename = "migbq-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
                 csvfile = os.path.join(migset.csvfile, filename) 
                 
                 print "jodIb : %s ... delete temp file : %s " % (jobId,csvfile)
@@ -68,7 +68,7 @@ def retry_error_job(migset):
             
         datalist, tablename, pkname, pk_range, col_type_map, log_idx = migset.values()
         # george-gv_game_asset_var_origin-log_id-8125175190-8125275190
-        filename = "pymig-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
+        filename = "migbq-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
          
         csvfile = os.path.join(migset.csvfile, filename) 
         

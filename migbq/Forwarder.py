@@ -3,7 +3,7 @@
 
 import datetime
 import logging
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 from __builtin__ import basestring, False
 from _mssql import decimal
 import thread
@@ -37,8 +37,8 @@ class Forwarder(MigrationRoot):
         self.first_q = TimeoutQueue()
         self.first_th = None
                 
-        self.filepath = "/tmp/pymig-data"
-        self.filepath_end = "/tmp/pymig-data-end"
+        self.filepath = "/tmp/migbq-data"
+        self.filepath_end = "/tmp/migbq-data-end"
 
     def filter_row(self, row):
         for key in row:

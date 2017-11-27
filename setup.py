@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
  
-setup(name='pymig',
+setup(name='migbq',
       version='0.0.1',
       url='https://github.com/jo8937/rdbms-to-bigquery-data-loader',
       license='MIT',
@@ -17,5 +17,10 @@ setup(name='pymig',
         'peewee-mssql',
         'pymssql',
         'concurrent-log-handler'
-        ]
+        ],
+      entry_points={
+            'console_scripts': [
+                'migbq = migbq.BQMig:commander',
+            ],
+        },
       )

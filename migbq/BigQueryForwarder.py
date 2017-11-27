@@ -10,7 +10,7 @@ import time
 import csv
 import gzip
 
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 
 import logging
 from google.cloud import bigquery
@@ -92,7 +92,7 @@ class BigQueryForwarder(Forwarder):
     
     def save_json_data(self, tbl, datalist, tablename=None, pkname=None, pk_range=None, col_type_map = None):
         
-        jobId = "pymig-%s-%s-%s-%s" % (tablename,  
+        jobId = "migbq-%s-%s-%s-%s" % (tablename,  
                                pkname,
                                pk_range[0],
                                pk_range[1]
@@ -118,7 +118,7 @@ class BigQueryForwarder(Forwarder):
         
     def save_csv_data(self, tbl, datalist, tablename=None, pkname=None, pk_range=None, col_type_map = None):
         
-        jobId = "pymig-%s-%s-%s-%s" % (tablename,  
+        jobId = "migbq-%s-%s-%s-%s" % (tablename,  
                                pkname,
                                pk_range[0],
                                pk_range[1]
@@ -212,7 +212,7 @@ class BigQueryForwarder(Forwarder):
     
     def execute_streaming_api(self, datalist, tablename=None, pkname=None, pk_range=None, col_type_map = None):
         
-        jobId = "pymig-%s-%s-%s-%s-%s" % (tablename,  
+        jobId = "migbq-%s-%s-%s-%s-%s" % (tablename,  
                                pkname,
                                pk_range[0],
                                pk_range[1],

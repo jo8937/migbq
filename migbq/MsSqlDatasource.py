@@ -11,7 +11,7 @@ import gzip
 
 from peewee import *
 from peewee_mssql_custom import MssqlDatabase  
-from pymig.migutils import get_logger
+from migbq.migutils import get_logger
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -291,7 +291,7 @@ WHERE
         self.conn.execute_query(query)
         
         migset = MigrationSet([])
-        migset.csvfile = os.path.join(self.csvpath,"pymig-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
+        migset.csvfile = os.path.join(self.csvpath,"migbq-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
         
         col_type_map = self.col_map[tablename]
         col_list = []
