@@ -1,7 +1,6 @@
-# pymig 
+# migbq 
 
 RDBMS 테이블에서 Bigquery 테이블로 데이터를 조금씩 이관하는 툴 .
-
 
 
 ## 전재 조건
