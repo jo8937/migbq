@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
  
 setup(name='migbq',
-      version='0.0.14',
+      version='0.0.15',
       url='https://github.com/jo8937/rdbms-to-bigquery-data-loader',
       license='MIT',
       author='jo8937',
@@ -18,11 +18,12 @@ setup(name='migbq',
         'peewee-mssql>=0.1.0',
         'concurrent-log-handler>=0.9.7',
         'pyyaml>=3.12',
-        'google-cloud-bigquery==0.27.0'
+        'google-cloud-bigquery==0.27.0',
+        'Jinja2>=2.10'
         ],
       entry_points={
             'console_scripts': [
-                'migbq = migbq.__main__:main',
+                'migbq = migbq.BQMig:commander',
             ],
         }
       )

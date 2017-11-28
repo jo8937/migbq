@@ -4,13 +4,12 @@
 import sys
 import ujson
 import os
-import yaml
-
 
 class MigrationConfig(object):
-    def __init__(self, configfilepath):
-        with open(configfilepath,"rb") as f:
-            self.source = yaml.load(f)
+    def __init__(self, dict_config):
+        #with open(configfilepath,"rb") as f:
+        #    self.source = yaml.load(f)
+        self.source = dict_config
         
     def init_config(self):
         conf = self.source

@@ -147,7 +147,7 @@ class TestBigquery(unittest.TestCase):
 
 class TestMig(unittest.TestCase):
     
-    configfile = getenv("pymig_config_path")
+    configfile = getenv("pymig_config_path_jinja")
         
     def test_00_mig(self):    
         commander(["run",self.configfile])
@@ -158,6 +158,14 @@ class TestMig(unittest.TestCase):
     def test_03_meta(self):
         commander(["meta",self.configfile])
 
+class TestMigUtils(unittest.TestCase):
+    
+    configfile = getenv("pymig_config_path")
+        
+    def test_get_config(self):    
+        conf = getenv("pymig_config_path_jinja")
+        print conf.__dict__
+        self.assertIsNotNone(conf)
 
 class TestJobChecker():
     def test_job_check_function(self):
@@ -167,7 +175,10 @@ class TestJobChecker():
         print check_job_finish(m)    
         
 if __name__ == '__main__':
-    sys.argv.append("TestMig.test_00_mig")
-    sys.argv.append("TestMig.test_01_check")
+    #sys.argv.append("TestMigUtils.test_get_config")
+#     sys.argv.append("TestMig.test_00_mig")
+#     sys.argv.append("TestMig.test_01_check")
+#     sys.argv.append("TestMig.test_03_meta")
+    sys.argv.append("TestMig")
     unittest.main()
     

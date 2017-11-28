@@ -117,7 +117,8 @@ class BQMig(object):
     def __init__(self, config_path, custom_config_dict=None, custom_log_name=None):
         
         from MigrationConfig import MigrationConfig
-        self.conf = MigrationConfig(config_path)
+        
+        self.conf = MigrationConfig(parse_config_file(config_path))
         
         print "pre config : %s" % ujson.dumps(self.conf.source, indent=4)
         

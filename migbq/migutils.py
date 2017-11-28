@@ -70,9 +70,22 @@ def convert_colname_with_convention(colname, col_name_convert_map={}):
     
 def get_config(config_file_path):
     from MigrationConfig import MigrationConfig
-    conf = MigrationConfig(config_file_path)
+    conf = MigrationConfig(parse_config_file(config_file_path))
     conf.init_config()
     return conf
+
+def parse_config_file(config_file_path, ):
+    import yaml
+
+    if config_file_path.endswith(".j2.yml"):
+        from jinja2 import Environment, FileSystemLoader
+        j2 = Environment(loader=FileSystemLoader(os.path.dirname(os.path.abspath(config_file_path)))).get_template( os.path.basename(config_file_path) )
+        conf = yaml.load(j2.render())
+    else:
+        with open(config_file_path,"rb") as f:
+            conf = yaml.load(f)    
+        
+    return conf 
 
 def get_connection_info(config_file_path):
     import yaml
