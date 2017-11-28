@@ -815,7 +815,7 @@ class MigrationMetadataManager(MigrationRoot):
     # 마이그레이션이 kill 로 죽었다면, 다음 마이그레이션 시작시 남아있는 로그들을 처리해야함.
     def execute_left_logs(self, tablename, callback=None, conf = None):
         
-        logList = self.select_incomplete_range(tablename)
+        logList = self.select_incomplete_range_groupby(tablename)
         
         self.log.info("execute_left_logs :: access to migration log :: %s", len(logList))
         
