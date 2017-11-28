@@ -120,6 +120,7 @@ bqmig sync config.yml
 * migbq have exclusive process lock. so you can add crontab every minute. 
 * you must add both **run** and **check**  
 
+
 ## Description
 
 ### run command
@@ -163,6 +164,20 @@ select * from tbl where idx => 300 and idx < 400;
 
 * check bigquery jobid end. 
 * retry fail job.
+
+
+### Log file of program
+
+* log file create in config file's sub directory [log]
+
+### Pid file of program
+
+* pid file provide unique process for unique command. created at below directory. exclusive file lock.
+
+
+```
+/tmp
+```
 
 ## loadmap
 

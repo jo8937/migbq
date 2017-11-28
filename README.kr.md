@@ -160,6 +160,15 @@ select * from tbl where idx => 300 and idx < 400;
 * mig 명령어로 실행된 구글 빅쿼리의 jobId 를 체크함. (기본적으로 프로세스 8개로 동시 체크)
 * 빅쿼리 입력 실패한 데이터가 있다면 업로드 재시도. (병렬이 아니므로 느림)
 
+
+### 로그 파일
+
+* 프로그램 로그파일은 설정파일이 있는 디랙토리 이하의 log 폴더를 생성해서 만들어짐. 
+
+### Pid file of program
+
+* pid 파일은 /tmp 이하에 생성되는데, crontab 에 걸릴 경우를 대비하여 exclusive file lock 을 수행.
+
 ## 로드맵
 
 * select 문을 N 개로 병렬 실행 가능하도록 변경 예정. 
