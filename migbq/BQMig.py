@@ -138,12 +138,14 @@ class BQMig(object):
         
         cmd = cmd or ""
         
-        self.logname = custom_log_name or ("migbq_%s_%s_%s_%s" % ( os.path.basename(config_path), cmd, dbname, "all" )) 
+        config_file_base_name = get_config_file_base_name(config_path)
+        
+        self.logname = custom_log_name or ("migbq_%s_%s_%s_%s" % (config_file_base_name , cmd, dbname, "all" )) 
             
         if len(tablenames) > 0:
             md5key = hashlib.md5("-".join(tablenames)).hexdigest()
             self.tablenames = tablenames
-            self.logname = "migbq_%s_%s_%s_%s" % (os.path.basename(config_path), cmd, dbname, md5key )
+            self.logname = "migbq_%s_%s_%s_%s" % (config_file_base_name, cmd, dbname, md5key )
             self.log = get_logger(self.logname, config_file_path=config_path)
         else:
             self.tablenames = None
@@ -405,8 +407,8 @@ def commander(array_command=None):
         # for crontab prevent duplicate process
         import fcntl
         
-        md5key = hashlib.md5( os.path.basename(arg.config_file) + "-".join(tablenames)).hexdigest()
-        lockfile = "/tmp/bqmig_%s_%s.pid" % (cmd, md5key)
+        md5key = hashlib.md5( "-".join(tablenames)).hexdigest()
+        lockfile = "/tmp/bqmig_%s_%s_%s.pid" % (get_config_file_base_name(arg.config_file), cmd, md5key)
         try:
             print "lock file : " + lockfile
             x = open(lockfile,"w+")
@@ -419,6 +421,12 @@ def commander(array_command=None):
         commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict)
         fcntl.flock(x, fcntl.LOCK_UN)
         
+def get_config_file_base_name(config_path):
+    config_file_base_name = os.path.splitext(os.path.basename(config_path))[0]
+    if config_file_base_name.endswith(".j2"):
+        config_file_base_name = os.path.splitext(config_file_base_name)[0]
+    return config_file_base_name
+
 def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None):
               
     mig = BQMig(config_file, 
