@@ -14,7 +14,7 @@ from migbq.MigrationSet import *
 import logging
 from os import getenv
 from migbq.BigQueryJobChecker import *
-from migbq.BQMig import commander
+from migbq.BQMig import commander, commander_executer
 
 class Struct:
     def __init__(self, **entries):
@@ -148,15 +148,21 @@ class TestBigquery(unittest.TestCase):
 class TestMig(unittest.TestCase):
     
     configfile = getenv("pymig_config_path_jinja")
-        
-    def test_00_mig(self):    
-        commander(["run",self.configfile])
+    
+    def test_00_reset(self):
+        commander_executer("reset_for_debug", self.configfile)
+    
+    def test_01_mig(self):    
+        commander(["run", self.configfile])
                 
-    def test_01_check(self):
-        commander(["check",self.configfile])
+    def test_02_check(self):
+        commander(["check", self.configfile])
             
-    def test_03_meta(self):
-        commander(["meta",self.configfile])
+    def test_03_sync(self):
+        commander(["sync", self.configfile])
+
+    def test_04_meta(self):
+        commander(["meta", self.configfile])
 
 class TestMigUtils(unittest.TestCase):
     
@@ -178,7 +184,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
-#     sys.argv.append("TestMig.test_03_meta")
+#    sys.argv.append("TestMig.test_00_reset")
     sys.argv.append("TestMig")
     unittest.main()
     

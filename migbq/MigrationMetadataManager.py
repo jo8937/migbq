@@ -46,7 +46,7 @@ class MigrationMetadataManager(MigrationRoot):
         pname = multiprocessing.current_process().name
         self.logname = "MigMeta_"+pname
         
-        self.log = get_logger(self.logname)
+        self.log = get_logger(self.logname, config_file_path = data["config"].config_file_path)
         self.log.setLevel(logging.INFO)
         self.meta_db_type = data.get("meta_db_type","sqlite")
         self.parent_meta_db_config = data.get("meta_db_config")

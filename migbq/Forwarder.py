@@ -31,7 +31,7 @@ class TimeoutQueue(Queue.Queue):
     
 class Forwarder(MigrationRoot):
     def __init__(self, **options):
-        self.log = get_logger("ForwardBase")
+        self.log = get_logger("ForwardBase", config_file_path = options["config"].config_file_path )
         self.SELECT_LIMIT = 1000000
         
         self.first_q = TimeoutQueue()

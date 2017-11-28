@@ -43,6 +43,7 @@ import shutil
 import yaml
 import argparse
 from os import getenv
+from setuptools.command.setopt import config_file
 
 class MigrationChildProcess(object):
     def __init__(self,conf):
@@ -56,7 +57,7 @@ class MigrationChildProcess(object):
         
     def run_check_job_finish(self, tablenames = None):
         from BigQueryJobChecker import check_job_finish
-        mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = tablenames)
+        mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = tablenames, config=self.conf)
         print "start check_job_finish() ..."
         with mig as m:
             m.check_job_finish(check_job_finish, self.migset_process)
@@ -64,7 +65,7 @@ class MigrationChildProcess(object):
         
     def run_retry_error_job(self, tablenames = None):
         from BigQueryJobChecker import retry_error_job
-        mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = tablenames)
+        mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = tablenames, config=self.conf)
         print "start run_retry_error_job() ..."
         with mig as m:
             result_list = m.check_job_retry(retry_error_job, self.migset_process)
@@ -94,7 +95,7 @@ class MigrationChildProcess(object):
                                         stop_when_no_more_data = True,
                                         tablenames = [migset.tablename],
                                         logname = "retryselect",
-                                        config = conf
+                                        config = conf 
                                         )
         
         fw = BigQueryForwarder(dataset=conf.datasetname,
@@ -118,7 +119,7 @@ class BQMig(object):
         
         from MigrationConfig import MigrationConfig
         
-        self.conf = MigrationConfig(parse_config_file(config_path))
+        self.conf = MigrationConfig(config_path)
         
         print "pre config : %s" % ujson.dumps(self.conf.source, indent=4)
         
@@ -139,10 +140,10 @@ class BQMig(object):
         if len(tablenames) > 0:
             self.tablenames = tablenames
             self.logname = "migbq_%s_%s_%s" % (os.path.basename(config_path), dbname, "_".join(tablenames) )
-            self.log = get_logger(self.logname+"_runner")
+            self.log = get_logger(self.logname, config_file_path=config_path)
         else:
             self.tablenames = None
-            self.log = get_logger(self.logname+"_runner")
+            self.log = get_logger(self.logname, config_file_path=config_path)
         
         if not os.path.exists(self.conf.csvpath):
             raise NameError("CVS Path [%s] not exists~!!" % self.conf.csvpath)
@@ -299,7 +300,7 @@ order by dt desc
             conn.close()
             
     def print_metadata(self):
-        m = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type)
+        m = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, config=self.conf)
         with m as mig:
             for row in mig.meta.select():
                 print "%s,%s,%s" % (row.tableName, row.currentPk, row.lastPk)
@@ -395,7 +396,7 @@ def commander(array_command=None):
         custom_config_dict["out"]["dataset"] = arg.dataset
     
     if os.name == "nt":
-        commander_executer(cmd, arg, custom_config_dict)
+        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict)
     else:
         # for crontab prevent duplicate process
         import fcntl
@@ -411,14 +412,14 @@ def commander(array_command=None):
             print err
             return None
         
-        commander_executer(cmd, arg, custom_config_dict)
+        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict)
         fcntl.flock(x, fcntl.LOCK_UN)
         
-def commander_executer(cmd, arg, custom_config_dict):
+def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None):
               
-    mig = BQMig(arg.config_file, 
-                custom_config_dict = custom_config_dict if len(custom_config_dict) > 0 else None, 
-                custom_log_name = arg.lockname 
+    mig = BQMig(config_file, 
+                custom_config_dict = custom_config_dict if custom_config_dict and len(custom_config_dict) > 0 else None, 
+                custom_log_name = lockname 
                 )
     tablenames = mig.tablenames
     

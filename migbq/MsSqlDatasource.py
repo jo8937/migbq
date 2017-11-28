@@ -31,7 +31,7 @@ from MigrationSet import MigrationSet
 class MsSqlDatasource(MigrationMetadataManager):
     def __init__(self, db_config, **data):
         super( MsSqlDatasource, self).__init__(**data)
-        self.log = get_logger("MsSqlSelector_" + data.get("logname","") )
+        self.log = get_logger("MsSqlSelector_" + data.get("logname",""), config_file_path=data["config"].config_file_path )
         self.log.setLevel(logging.INFO)
         self.db_config = db_config
         self.select_size = data.get("listsize",10)

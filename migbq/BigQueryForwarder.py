@@ -22,7 +22,7 @@ class BigQueryForwarder(Forwarder):
         self.dataset_name = options.get("dataset")
         self.table_prefix = options.get("prefix","t_tmp_")
         self.table_map = {}  
-        self.log = get_logger("BigQueryForwarder_" + options.get("logname",""))
+        self.log = get_logger("BigQueryForwarder_" + options.get("logname",""), config_file_path=options["config"].config_file_path)
         self.bq = None
         self.dataset = None
         self.lastJobId = None

@@ -10,7 +10,7 @@ class DummyForwarder(Forwarder):
         self.dataset_name = None
         self.table_prefix = None
         self.table_map = {}  
-        self.log = get_logger("DummyForwarder_" + options.get("logname",""))
+        self.log = get_logger("DummyForwarder_" + options.get("logname",""), config_file_path = options["config"].config_file_path)
         self.bq = None
         self.dataset = None
         self.lastJobId = None

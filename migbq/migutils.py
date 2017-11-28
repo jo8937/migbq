@@ -5,7 +5,7 @@ import sys
 import os
 import logging
 
-def get_logger(name, rawData = False, timeRotate=False, dirs="log"):
+def get_logger(name, rawData = False, timeRotate=False, dirs="log", config_file_path=None):
     log = logging.getLogger('migbq-log-' + name)
 
     try:
@@ -15,7 +15,10 @@ def get_logger(name, rawData = False, timeRotate=False, dirs="log"):
             logfmt = logging.Formatter("# %(asctime)-15s # %(message)s")
         logging.basicConfig(format="# %(message)s")
 
-        log_folder = os.path.join( os.path.dirname(os.path.realpath(__file__)), dirs )
+        if config_file_path:
+            log_folder = os.path.join( os.path.dirname(os.path.abspath(config_file_path)), dirs )
+        else:
+            log_folder = os.path.join( os.path.dirname(os.path.realpath(__file__)), dirs )
         #log_filename = os.path.splitext(os.path.basename(__file__))[0] + ".log"
         log_filename = name + ".log"
 
@@ -70,11 +73,11 @@ def convert_colname_with_convention(colname, col_name_convert_map={}):
     
 def get_config(config_file_path):
     from MigrationConfig import MigrationConfig
-    conf = MigrationConfig(parse_config_file(config_file_path))
+    conf = MigrationConfig(config_file_path)
     conf.init_config()
     return conf
 
-def parse_config_file(config_file_path, ):
+def parse_config_file(config_file_path):
     import yaml
 
     if config_file_path.endswith(".j2.yml"):
