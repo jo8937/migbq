@@ -384,7 +384,47 @@ class MigrationMetadataManager(MigrationRoot):
         #    print r.jobId
         
         return l
-    
+    def update_duplicate_range_logs(self, tablename, groupbylist):
+        
+        for row in groupbylist:
+            if row.cnt > 1:
+                self.log.info("update duplicate [%s] %s ~ %s ::: (%s)",row.tableName, row.pkLower, row.pkUpper, row.cnt)
+        
+        query = self.meta_log.update(jobId = "", pageToken = "duplicated")\
+                             .where(
+                                 (self.meta_log.jobId.is_null() | 
+                                     (self.meta_log.jobComplete < 0)) & 
+                                 (self.meta_log.tableName == tablename)
+                                 &
+                                 ~(self.meta_log.idx << [row.idx for row in groupbylist])
+                                 )
+        query.execute()
+        
+    def select_incomplete_range_groupby(self, tablename):
+        query = self.meta_log.select(
+                             self.meta_log.tableName, 
+                             self.meta_log.pkName,
+                             self.meta_log.pkUpper,
+                             self.meta_log.pkLower,
+                             fn.Max(self.meta_log.idx).alias('idx'),
+                             fn.Count(self.meta_log.idx).alias('cnt'),
+                             fn.Max(self.meta_log.idx).alias('maxpk'),
+                             fn.Min(self.meta_log.idx).alias('minpk'),
+                             )\
+                             .group_by(
+                                 self.meta_log.tableName, 
+                                 self.meta_log.pkName,
+                                 self.meta_log.pkUpper,
+                                 self.meta_log.pkLower)\
+                             .where((self.meta_log.jobId.is_null() | 
+                                     (self.meta_log.jobComplete < 0)) & 
+                                    (self.meta_log.tableName == tablename) )
+        if query:
+            l = [row for row in query]
+            self.update_duplicate_range_logs(tablename, l)
+            return l
+        else:
+            return None
     """
     def update_job_error(self, idxs):
         self.log.debug("update_job_error : %s", idx)

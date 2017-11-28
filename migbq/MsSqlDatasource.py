@@ -83,8 +83,8 @@ class MsSqlDatasource(MigrationMetadataManager):
         last_pk = 0
         total_rows = 0
         for row in self.conn:
-            first_pk = row["mn"]        
-            last_pk = row["mx"]
+            first_pk = row["mn"] or 0       
+            last_pk = row["mx"] or 0
             #total_rows = row["cnt"]
             total_rows = last_pk - first_pk 
         
