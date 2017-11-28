@@ -134,11 +134,11 @@ class BQMig(object):
         dbname = self.conf.source["in"]["database"]
         tablenames = self.conf.source["in"]["tables"]
         
-        self.logname = custom_log_name or ("mig_%s_%s" % (dbname, "all" )) 
+        self.logname = custom_log_name or ("migbq_%s_%s_%s" % ( os.path.basename(config_path), dbname, "all" )) 
             
         if len(tablenames) > 0:
             self.tablenames = tablenames
-            self.logname = "mig_%s_%s" % (dbname, "_".join(tablenames) )
+            self.logname = "migbq_%s_%s_%s" % (os.path.basename(config_path), dbname, "_".join(tablenames) )
             self.log = get_logger(self.logname+"_runner")
         else:
             self.tablenames = None

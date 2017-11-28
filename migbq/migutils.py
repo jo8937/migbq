@@ -80,7 +80,7 @@ def parse_config_file(config_file_path, ):
     if config_file_path.endswith(".j2.yml"):
         from jinja2 import Environment, FileSystemLoader
         j2 = Environment(loader=FileSystemLoader(os.path.dirname(os.path.abspath(config_file_path)))).get_template( os.path.basename(config_file_path) )
-        conf = yaml.load(j2.render())
+        conf = yaml.load(j2.render(env=os.environ))
     else:
         with open(config_file_path,"rb") as f:
             conf = yaml.load(f)    

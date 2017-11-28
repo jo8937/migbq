@@ -43,6 +43,8 @@ pip install pymig
 
 ### 예제
 
+#### 일반 설정파일 
+
 * config.yml 
 
 ```yml
@@ -63,6 +65,29 @@ in:
 out:
   type: bigquery
   project: GCP_PROJECT
+  dataset: BQ_DATASET
+```
+
+#### jinja2 template 형식
+
+* config.j2.yml
+ - jinja2 template 도 지원함. variable 은 현재 환경변수 (env) 만 지원함
+ - .j2.yml 로 끝나는 확장자만 지원.
+
+```yml
+in:
+  type: mssql
+{% include "mssql-connect.yml" %}
+  tables: 
+    - tbl
+    - tbl2
+    - tbl3
+  batch_size: 50000
+  temp_csv_path: /temp/pymig_csv
+  temp_csv_path_complete: /temp/pymig_csv_complete 
+out:
+  type: bigquery
+  project: {{ env.GCP_PROJECT }}
   dataset: BQ_DATASET
 ```
 
