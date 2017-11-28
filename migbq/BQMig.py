@@ -5,6 +5,7 @@ import sys
 import signal
 from migbq.migutils import get_logger
 import datetime
+import hashlib
 
 import ujson
 import os
@@ -115,7 +116,7 @@ class MigrationChildProcess(object):
 
 class BQMig(object):
     
-    def __init__(self, config_path, custom_config_dict=None, custom_log_name=None):
+    def __init__(self, config_path, custom_config_dict=None, custom_log_name=None, cmd=None):
         
         from MigrationConfig import MigrationConfig
         
@@ -135,11 +136,14 @@ class BQMig(object):
         dbname = self.conf.source["in"]["database"]
         tablenames = self.conf.source["in"]["tables"]
         
-        self.logname = custom_log_name or ("migbq_%s_%s_%s" % ( os.path.basename(config_path), dbname, "all" )) 
+        cmd = cmd or ""
+        
+        self.logname = custom_log_name or ("migbq_%s_%s_%s_%s" % ( os.path.basename(config_path), cmd, dbname, "all" )) 
             
         if len(tablenames) > 0:
+            md5key = hashlib.md5("-".join(tablenames)).hexdigest()
             self.tablenames = tablenames
-            self.logname = "migbq_%s_%s_%s" % (os.path.basename(config_path), dbname, "_".join(tablenames) )
+            self.logname = "migbq_%s_%s_%s_%s" % (os.path.basename(config_path), cmd, dbname, md5key )
             self.log = get_logger(self.logname, config_file_path=config_path)
         else:
             self.tablenames = None
@@ -400,7 +404,7 @@ def commander(array_command=None):
     else:
         # for crontab prevent duplicate process
         import fcntl
-        import hashlib
+        
         md5key = hashlib.md5( os.path.basename(arg.config_file) + "-".join(tablenames)).hexdigest()
         lockfile = "/tmp/bqmig_%s_%s.pid" % (cmd, md5key)
         try:
@@ -419,7 +423,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
               
     mig = BQMig(config_file, 
                 custom_config_dict = custom_config_dict if custom_config_dict and len(custom_config_dict) > 0 else None, 
-                custom_log_name = lockname 
+               custom_log_name = lockname,
+               cmd = cmd 
                 )
     tablenames = mig.tablenames
     
