@@ -1109,7 +1109,7 @@ class MigrationMetadataManager(MigrationRoot):
             aggrlist = sorted(aggrlist, key=lambda k: k['dt'])
             
             for row in aggrlist:
-                self.log.debug("[%s] : %s",dt,daysum[dt])
+                self.log.debug("[%s] : %s",row["dt"],row["cnt"])
                              
             # remove first and last day
             if len(aggrlist) > 2:
