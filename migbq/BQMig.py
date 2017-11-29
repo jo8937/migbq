@@ -188,8 +188,15 @@ class BQMig(object):
         self.datasource.csvpath = conf.csvpath
         self.datasource.log.setLevel(logging.DEBUG)
         
-        
-        
+    def close_migration(self):    
+        try:
+            if self.datasource:
+                if self.datasource.conn:
+                    self.datasource.close()
+                self.datasource = None
+            self.tdforward = None
+        except:
+            self.log.error("error on close...", exc_info = True)
         
     def start_migration(self):
         with self.datasource as ds:
@@ -360,11 +367,14 @@ order by dt desc
             self.run_migration()
         except:
             self.log.error("########### ERROR in Migration #######################", exc_info=True)
+            self.log.error("## datasource close ##")
+            self.close_migration()
             self.log.error("## retry after 3 minute ... ##")
             time.sleep(180)
             self.log.error("## run again ~! ##")
             self.run_forever()
-            
+
+        
 #########################
 # 이거 나중에 많아지면 리플랙션으로 바꾸자...
 #########################
