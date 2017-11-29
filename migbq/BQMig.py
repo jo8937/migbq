@@ -133,19 +133,20 @@ class BQMig(object):
         self.conf.init_config()
         
             
-        dbname = self.conf.source["in"]["database"]
+        #dbname = self.conf.source["in"]["database"]
         tablenames = self.conf.source["in"]["tables"]
+        datasetname = self.conf.datasetname
         
         cmd = cmd or ""
         
         config_file_base_name = get_config_file_base_name(config_path)
         
-        self.logname = custom_log_name or ("migbq_%s_%s_%s_%s" % (config_file_base_name , cmd, dbname, "all" )) 
+        self.logname = custom_log_name or ("migbq_%s_%s_%s_%s" % (config_file_base_name , cmd, datasetname, "all" )) 
             
         if len(tablenames) > 0:
             md5key = hashlib.md5("-".join(tablenames)).hexdigest()
             self.tablenames = tablenames
-            self.logname = "migbq_%s_%s_%s_%s" % (config_file_base_name, cmd, dbname, md5key )
+            self.logname = "migbq_%s_%s_%s_%s" % (config_file_base_name, cmd, datasetname, md5key )
             self.log = get_logger(self.logname, config_file_path=config_path)
         else:
             self.tablenames = None

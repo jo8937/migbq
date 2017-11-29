@@ -424,7 +424,7 @@ class MigrationMetadataManager(MigrationRoot):
             self.update_duplicate_range_logs(tablename, l)
             return l
         else:
-            return None
+            return []
     """
     def update_job_error(self, idxs):
         self.log.debug("update_job_error : %s", idx)
