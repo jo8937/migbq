@@ -66,10 +66,15 @@ class TestMig(unittest.TestCase):
         commander(["meta", self.configfile])
 
     def test_99_error_pk_not_numeric(self):    
-        commander(["run", self.configfile,"--tablenames","companycode","persons9"])
+        commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
     
     def test_99_error_pk_not_numeric_raise(self):
-        commander(["run", self.configfile,"--tablenames","companycode"])
+        try:
+            commander(["run_with_no_retry", self.configfile,"--tablenames","companycode"])
+            self.assertTrue(False, "this routin must raise exception")
+        except:
+            print sys.exc_info()
+            print "FAIL is OK~!"
             
 class TestMigUtils(unittest.TestCase):
     
@@ -92,6 +97,7 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
 #    sys.argv.append("TestMig.test_00_reset")
-    sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
+    #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
+    sys.argv.append("TestMig")
     unittest.main()
     

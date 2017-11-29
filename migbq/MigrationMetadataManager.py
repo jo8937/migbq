@@ -219,7 +219,7 @@ class MigrationMetadataManager(MigrationRoot):
             self.tablenames.remove(tablename)
             del self.pk_map[tablename]
             del self.col_map[tablename]
-            errormessage = "!!! [ERROR] Table Primary Key is not Numeric [%s] %s %s" % (tablename, pkname, coltype)
+            errormessage = "!!! [ERROR] Table Primary Key is NOT Numeric [%s].[%s] = (%s)" % (tablename, pkname, coltype)
             self.log.error(errormessage)
             self.log.error("##################################")
             self.log.error("# delete tablename [%s]" % tablename)

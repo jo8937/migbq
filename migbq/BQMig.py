@@ -377,7 +377,7 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
@@ -454,6 +454,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
             mig.run_forever()
         else:
             print "select table like ... [BQMig.py mig DBNAME tablename1 tablename2] ... "
+    elif cmd == "run_with_no_retry":
+        mig.run_migration()
     elif cmd == "some":
         if len(tablenames) > 0:
             mig.run_migration_some_pk(mig.conf.source["in"]["pk_lower"], mig.conf.source["in"]["pk_upper"])
