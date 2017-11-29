@@ -402,11 +402,20 @@ class MigrationMetadataManager(MigrationRoot):
         else:
             query = self.meta_log.select().where( self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0) )
         l = [row for row in query]
-        
-        #for r in l:
-        #    print r.jobId
-        
         return l
+    
+    def select_complete_range(self, tablenames = None, limit = -1):
+        if tablenames is not None:
+            query = self.meta_log.select().where(self.meta_log.jobId.is_null(False) & (self.meta_log.jobComplete > 0) & (self.meta_log.tableName << tablenames) )
+        else:
+            query = self.meta_log.select().where( self.meta_log.jobId.is_null(False) & (self.meta_log.jobComplete > 0) )
+            
+        if limit > 0:
+            query.limit(limit)
+            
+        l = [row for row in query]
+        return l
+    
     def update_duplicate_range_logs(self, tablename, groupbylist):
         
         for row in groupbylist:
@@ -1066,6 +1075,67 @@ class MigrationMetadataManager(MigrationRoot):
                 p.join()
         
         return result_list
+    
+    def estimate_remain_days(self, tablenames=None):
+        try:
+            #maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
+            
+            metaq = self.meta.select(fn.Sum(self.meta.lastPk - self.meta.currentPk))
+            logq = self.meta_log.select(fn.Sum(self.meta_log.pkUpper - self.meta_log.pkLower))
+            if tablenames:
+                metaq = metaq.where(self.meta.tableName << tablenames)
+                logq = logq.where((self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0)) & (self.meta_log.tableName << tablenames))
+            else:
+                logq = logq.where(self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0))
+                 
+            remain_rows = metaq.scalar()
+            remain_rows_in_log = logq.scalar() or 0
+            
+            complete_list = self.select_complete_range(tablenames = tablenames, limit = 10000)
+
+            daysum = {}
+            for row in complete_list:
+                if row.endDate:
+                    #dt = row.endDate.strftime("%Y-%m-%d")
+                    dt = row.endDate[:10]
+                    if dt not in daysum:
+                        daysum[dt] = 0 
+                    daysum[dt] += row.cnt if row.cnt > 0 else row.pkUpper - row.pkLower 
+
+            aggrlist = []
+            for dt in daysum:
+                self.log.debug("[%s] : %s",dt,daysum[dt])
+                aggrlist.append( {"dt":dt,"cnt":daysum[dt]})
+            
+            aggrlist = sorted(aggrlist, key=lambda k: k['dt']) 
+            # remove first and last day
+            if len(aggrlist) > 2:
+                aggrlist = aggrlist[1:-1]
+                
+            aggrlist = sorted(aggrlist, key=lambda k: k['cnt']) 
+            # remove min. max cnt    
+            if len(aggrlist) > 2:
+                aggrlist = aggrlist[1:-1]
+            
+            if len(aggrlist) <= 0:
+                self.log.debug("aggr list is 0... ")
+                return 0
+
+            self.log.debug("avg for : %s", ujson.dumps(aggrlist, indent=4))
+            cntlist = [row["cnt"] for row in aggrlist]
+            row_per_day = sum(cntlist) / len(cntlist)
+            
+            self.log.debug("Remain Row : %s",remain_rows)
+            self.log.debug("Remain Row in Log : %s",remain_rows_in_log)
+            self.log.debug("Avg processed row per days : %s",row_per_day)
+            
+            remain_day = (remain_rows_in_log + remain_rows) / row_per_day 
+            remain_day = int(remain_day)
+            
+            return remain_day
+        except:
+            self.log.error("remain days",exc_info=True)
+
 ########################################################################################################################
 
 class MssqlPrimaryKeyAutoIncrementField(BigIntegerField):

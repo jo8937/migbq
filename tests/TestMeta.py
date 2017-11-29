@@ -15,6 +15,7 @@ import logging
 from os import getenv
 from migbq.BigQueryJobChecker import *
 from migbq.BQMig import commander, commander_executer
+from datetime import datetime
 
 class Struct:
     def __init__(self, **entries):
@@ -108,11 +109,33 @@ class TestMeta(unittest.TestCase):
                 self.assertIsNotNone(row.maxpk)
                 self.assertIsNotNone(row.minpk)
                 
+    def test_remain_day(self):
+        with self.mig as mig:
+            mig.log.setLevel(logging.DEBUG)
+            mig.meta_log.delete().where(mig.meta_log.tableName == "persons6").execute()
+            mig.meta_log.delete().where(mig.meta_log.tableName == "persons7").execute()
+            mig.meta.delete().where(mig.meta.tableName == "persons7").execute()
+            mig.meta.insert(tableName = "persons7", lastPk = 140, currentPk = 40)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 10,pkLower = 1,pkCurrent = 10, endDate = datetime.strptime("2017-11-25 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 20,pkLower = 10,pkCurrent = 10, endDate = datetime.strptime("2017-11-26 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 30,pkLower = 20,pkCurrent = 20, endDate = datetime.strptime("2017-11-27 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 30,pkLower = 20,pkCurrent = 20, endDate = datetime.strptime("2017-11-28 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 30,pkLower = 20,pkCurrent = 20, endDate = datetime.strptime("2017-11-29 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 40,pkLower = 30,pkCurrent = 30, endDate = datetime.strptime("2017-11-30 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+
+
+            remainDay = mig.estimate_remain_days(tablenames = ["persons7"])
+            print "." 
+            print "r : %s" % remainDay
+            
+            self.assertEqual(remainDay, 10)
+            #mig.meta.delete().where(mig.meta.tableName == "persons7").execute()
     
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
-    sys.argv.append("TestMeta.test_incomplete_log")
+    #sys.argv.append("TestMeta.test_incomplete_log")
+    sys.argv.append("TestMeta.test_remain_day")
     unittest.main()
     
