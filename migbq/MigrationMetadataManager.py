@@ -411,7 +411,7 @@ class MigrationMetadataManager(MigrationRoot):
             query = self.meta_log.select().where( self.meta_log.jobId.is_null(False) & (self.meta_log.jobComplete > 0) )
             
         if limit > 0:
-            query.order_by(self.meta_log.idx.desc()).limit(limit)
+            query = query.order_by(self.meta_log.idx.desc()).limit(limit)
             
         l = [row for row in query]
         return l
