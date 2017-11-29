@@ -65,6 +65,12 @@ class TestMig(unittest.TestCase):
     def test_04_meta(self):
         commander(["meta", self.configfile])
 
+    def test_99_error_pk_not_numeric(self):    
+        commander(["run", self.configfile,"--tablenames","companycode","persons9"])
+    
+    def test_99_error_pk_not_numeric_raise(self):
+        commander(["run", self.configfile,"--tablenames","companycode"])
+            
 class TestMigUtils(unittest.TestCase):
     
     configfile = getenv("pymig_config_path")
@@ -86,6 +92,6 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
 #    sys.argv.append("TestMig.test_00_reset")
-    sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     unittest.main()
     

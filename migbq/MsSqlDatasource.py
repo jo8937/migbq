@@ -27,6 +27,7 @@ from playhouse.sqlite_ext import PrimaryKeyAutoIncrementField
 # MsSQL / MySQL 에서 테이블을 읽어서 어디론가 보내기 위한...
 from MigrationMetadataManager import MigrationMetadataManager
 from MigrationSet import MigrationSet
+import copy
 
 class MsSqlDatasource(MigrationMetadataManager):
     def __init__(self, db_config, **data):
@@ -57,8 +58,20 @@ class MsSqlDatasource(MigrationMetadataManager):
             self.conn = _mssql.connect(**self.db_config)
             #self.cursor = self.conn.cursor(prepared=True)
             #self.conn.autocommit = True
+        except TypeError as err:
+            dbconfig = copy.copy(self.db_config)
+
+            if "got an unexpected keyword argument 'use_legacy_datetime'" in str(err) and "use_legacy_datetime" in dbconfig:
+                self.log.error("### ",exc_info=True)
+                self.log.info("### delete use_legacy_datetime setting and retry connect ... ")
+                del dbconfig["use_legacy_datetime"]
+                self.conn = _mssql.connect(**dbconfig)
+            else:
+                self.log.error("error when connect()", exc_info=True)    
+                raise
         except:
             self.log.error("error when connect()", exc_info=True)
+            raise
         #self.conn.close()
         
     def close(self):
@@ -86,7 +99,12 @@ class MsSqlDatasource(MigrationMetadataManager):
             first_pk = row["mn"] or 0       
             last_pk = row["mx"] or 0
             #total_rows = row["cnt"]
-            total_rows = last_pk - first_pk 
+            if isinstance(first_pk, numbers.Number) and isinstance(last_pk, numbers.Number): 
+                total_rows = last_pk - first_pk
+            else:
+                first_pk = 0
+                last_pk = 0
+                total_rows = 0
         
         return (first_pk - 1, last_pk, total_rows)
     

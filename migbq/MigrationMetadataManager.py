@@ -20,7 +20,7 @@ from peewee import *
 
 from peewee_mssql_custom import MssqlDatabase  
 
-from migbq.migutils import get_logger
+from migbq.migutils import get_logger, estimate_bigquery_type
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -198,13 +198,36 @@ class MigrationMetadataManager(MigrationRoot):
         self.col_map = self.select_column_type_map(self.tablenames) 
         self.log.debug("COL Map : %s", self.col_map)
         
+        self.validate_integer_pk_and_normalize()
+        
         self.log.debug("####### Finish Init Schemas In Memory : %s", self.tablenames)
        
     def init_metadata(self):
         for tbl in self.col_map:
             self.log.debug("# Save Table Info %s", tbl)
             self.init_table_metadata(tbl)
-         
+    
+    def validate_integer_pk_and_normalize(self):
+        invalid_tablenames = []
+        for tablename in self.pk_map:
+            pkname = self.pk_map[tablename]
+            coltype = self.col_map[tablename][pkname] 
+            if estimate_bigquery_type(coltype) not in ["INTEGER","FLOAT"]:
+                invalid_tablenames.append(tablename)
+                #raise TypeError("Table Primary Key is not Numeric [%s] %s %s" % (tablename, pkname, coltype))
+        for tablename in invalid_tablenames:
+            self.tablenames.remove(tablename)
+            del self.pk_map[tablename]
+            del self.col_map[tablename]
+            errormessage = "!!! [ERROR] Table Primary Key is not Numeric [%s] %s %s" % (tablename, pkname, coltype)
+            self.log.error(errormessage)
+            self.log.error("##################################")
+            self.log.error("# delete tablename [%s]" % tablename)
+            self.log.error("##################################")
+            # 그 외 지정한 
+            if not self.tablenames or len(self.tablenames) == 0:
+                raise TypeError(errormessage)
+                
     ########################################################################################################################
     # SQLITE 혹은 기타 어느 DB 로든...
     # 마이그레이션 메타데이터를 저장하는 함수군.

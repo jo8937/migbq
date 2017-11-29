@@ -56,7 +56,7 @@ def get_logger(name, rawData = False, timeRotate=False, dirs="log", config_file_
 def estimate_bigquery_type(tp):
     if tp.startswith(("int","bigint","tinyint","smallint")):
         fieldType = "INTEGER"
-    elif tp.startswith(("float","double")):
+    elif tp.startswith(("float","double","numeric","decimal")):
         fieldType = "FLOAT"                    
     elif tp.startswith(("timestamp","datetime")):
         fieldType = "TIMESTAMP"

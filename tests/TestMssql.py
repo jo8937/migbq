@@ -62,7 +62,28 @@ class TestMssql(unittest.TestCase):
                         tbl.insert( id = i, name = "Tester-%s-%s" % (tablename,i), point = random.randint(1, 2000000), modDate = datetime.datetime.now() - timedelta(days=random.randint(0, 100)) ).execute()
                 else:
                     print "table [%s] count is : %s" % (tablename, cnt)                    
-                    
+            
+            class CompanyCode(Model):
+                code = CharField(primary_key=True)
+                name = CharField(null=True)
+                point = BigIntegerField(null=True)
+                regDate = DateTimeField(default=datetime.datetime.now)
+                modDate = DateTimeField(null=True)
+                class Meta:
+                    database = ds.DB
+            tbl = CompanyCode
+            try:
+                ds.DB.create_tables([tbl], safe=True)
+            except:
+                ds.log.error("## error creat test data ", exc_info=True)
+                
+            cnt = tbl.select().count()             
+            if cnt == 0:
+                for i in xrange(1, random.randint(10, 20)):
+                    tbl.insert( code = "code-%s" % i, name = "Tester-%s-%s" % (tablename,i), point = random.randint(1, 2000000), modDate = datetime.datetime.now() - timedelta(days=random.randint(0, 100)) ).execute()
+            else:
+                print "table [%s] count is : %s" % (tablename, cnt)                    
+                   
         
     def test_sample_tables(self):
         print 1
