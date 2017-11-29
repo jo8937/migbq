@@ -169,6 +169,52 @@ select * from tbl where idx => 300 and idx < 400;
 
 * pid 파일은 /tmp 이하에 생성되는데, crontab 에 걸릴 경우를 대비하여 exclusive file lock 을 수행.
 
+### 메타데이터 테이블 설명
+
+#### 메타 테이블 : migrationmetadata
+
+* 업로드할 테이블마다 하나의 row 가 생겨남.
+
+| 필드명      | 타입    | 설명                                                        | 샘플값                |비고               |
+| ----:     |--------|----------------------------------------|-----------------|-------------|
+| tableName | STRING  | 업로드할 테이블 명                                  | tbl             | Primary Key |
+| firstPk   | INTEGER | 타겟 테이블의 PK 값의 최소값                   | 1             |           |
+| lastPk    | INTEGER | 타겟 테이블의 PK 값의 최대값                   | 123             |           |
+| currentPk | STRING  | 현재까지 업로드 완료된 PK 값                  | 20             |           |
+| regDate   | DATETIME| 타겟 테이블이 이 메타테이블에 등록된 일시   | 2017-11-29 01:02:03             |           |
+| modDate   | DATETIME| firstPk, lastPk 를 갱신한 일시              | 2017-11-29 01:02:03             |           |
+| endDate   | DATETIME| currentPk 가 lastPk 까지 다 완료된 일시 | 2017-11-29 11:22:33             |           |
+| pkName    | STRING  | 타겟 테이블의 Primary Key 컬럼명          | idx             |           |
+| rowCnt    | INTEGER | 타겟 테이블의 총 count(*)              | 123             |           |
+| pageTokenCurrent | STRING | 사용 안함                                   | tbl             |           |
+| pageTokenNext | STRING |  사용 안함                                       | tbl             |           |
+
+#### 로그 테이블 : migrationmetadatalog
+
+* 로그 입력 순서
+  - run 명령에서 select 발생 시 insert 함.
+  - run 명령에서 bigquery jobId 가 발생했다면 update 함
+  - check 명령으로 bigquery jobId 를 체크 후, jobComplete 와 checkComplete 를  update 함
+
+| 필드명      | 타입    | 설명                                                        | 샘플값                |비고               |
+| ----:     |--------|----------------------------------------|-----------------|-------------|
+| idx | BigInt | 로그의 PK                                  | 1             | Primary Key Auto Increment |
+| tableName | STRING | select 가 수행된 테이블 명                                  | tbl             | Primary Key |
+| regDate   | DATETIME | 타겟 테이블 select 실행 일시   | 2017-11-29 01:02:03             |           |
+| endDate   | DATETIME | jobId 가 DONE 이 되었을 경우 jobComplete 가 1이 된 일시 | 2017-11-29 11:22:33             |           |
+| pkName    | STRING | 타겟 테이블의 Primary Key 컬럼명          | idx             |           |
+| cnt    | INTEGER | 업로드 성공한 row 수. 현재 비구현              | 123             |           |
+| pkUpper    | INTEGER | select 실행 시 최대값 조건에 들어가는 값. [PKName] <= [pkUpper] | 100             |           |
+| pkLower    | INTEGER | select 실행 시 최소값 조건에 들어가는 값. [PKName] > [pkLower]    | 0             |           |
+| pkCurrent    | INTEGER | same as pkUpper             | 99             |           |
+| jobId    | STRING | bigquery 의 upload job jobId        | job-adf132f31rf3f             |           |
+| errorMessage    | STRING | check 명령어로 jodId 를 체크한 결과, ERROR 가 나왔다면 그걸 기록하는 곳          | ERROR:bigquery quota exceed             |           |
+| checkComplete | INTEGER | check 명령어가 실행되었는지 여부                                  | 1             |           |
+| jobComplete | INTEGER |  check 명령어로 jobId 체크 결과, 성공했다면 1, 에러라면 -1 | 1             |           |
+| pageToken | STRING |  비고로 사용                                       |              |           |
+
+
+
 ## 로드맵
 
 * select 문을 N 개로 병렬 실행 가능하도록 변경 예정. 

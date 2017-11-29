@@ -179,6 +179,51 @@ select * from tbl where idx => 300 and idx < 400;
 /tmp
 ```
 
+### load metadata table
+
+#### META: migrationmetadata
+
+* one row insert when each 'select' runs
+
+| field name | type   | description                            | smaple value  | etc               |
+| ----:     |--------|----------------------------------------|-----------------|-------------|
+| tableName | STRING  | target [tableName]                         | tbl             | Primary Key |
+| firstPk   | INTEGER | [tableName]'s Min Primary Key value       | 1             |           |
+| lastPk    | INTEGER | [tableName]'s Max Primary Key value                  | 123             |           |
+| currentPk | STRING  | [tableName]'s read complete Primary Key value                  | 20             |           |
+| regDate   | DATETIME| this row's insert date   | 2017-11-29 01:02:03             |           |
+| modDate   | DATETIME| firstPk, lastPk modify date              | 2017-11-29 01:02:03             |           |
+| endDate   | DATETIME| currentPk reach lastPk date | 2017-11-29 11:22:33             |           |
+| pkName    | STRING  | [tableNames]'s Primary Key Name          | idx             |           |
+| rowCnt    | INTEGER | [tableNames]'s count(*)              | 123             |           |
+| pageTokenCurrent | STRING | not use now                                   | tbl             |           |
+| pageTokenNext | STRING |  not use now                                     | tbl             |           |
+
+#### LOG:  migrationmetadatalog
+
+* sequance
+  - run :  insert a row to this table when 'select [tableName]' executed
+  - run :  update a row to this table when bigquery jobId created 
+  - check : update a row to this table's jobComplete and checkComplete when bigquery jobId call ends 
+
+| field name | type   | description                            | smaple value  | etc               |
+| ----:     |--------|----------------------------------------|-----------------|-------------|
+| idx | BigInt |  PK                                  | 1             | Primary Key Auto Increment |
+| tableName | STRING | [tableName]                                  | tbl             | Primary Key |
+| regDate   | DATETIME | row insert date   | 2017-11-29 01:02:03             |           |
+| endDate   | DATETIME | when jobId is 'DONE'  | 2017-11-29 11:22:33             |           |
+| pkName    | STRING | [tableNames]'s Primary Key Name          | idx             |           |
+| cnt    | INTEGER | not use now              | 123             |           |
+| pkUpper    | INTEGER | each 'select' executed : [PKName] <= [pkUpper] | 100             |           |
+| pkLower    | INTEGER | each 'select' executed : [PKName] > [pkLower]    | 0             |           |
+| pkCurrent    | INTEGER | same as pkUpper  | 99             |           |
+| jobId    | STRING | bigquery upload job jobId        | job-adf132f31rf3f             |           |
+| errorMessage    | STRING | when jodId check result is 'ERROR', then write this  | ERROR:bigquery quota exceed             |           |
+| checkComplete | INTEGER | check command       | 1             |           |
+| jobComplete | INTEGER |  check command jobId check complete. success=1, fail=-1 | 1             |           |
+| pageToken | STRING |  use as etc                                       |              |           |
+
+
 ## loadmap
 
 * parallel loading not supported.  
