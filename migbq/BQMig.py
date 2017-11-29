@@ -277,6 +277,7 @@ class BQMig(object):
             conn.execute_query("""
             SELECT top 7 convert(varchar, enddate, 112)  as dt, sum(pkUpper - pkLower) as cnt
 FROM migrationmetadatalog
+where jobId is not null and jobComplete > 0
 group by convert(varchar, enddate, 112) 
 order by dt desc  
             """)
