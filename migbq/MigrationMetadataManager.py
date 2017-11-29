@@ -411,7 +411,7 @@ class MigrationMetadataManager(MigrationRoot):
             query = self.meta_log.select().where( self.meta_log.jobId.is_null(False) & (self.meta_log.jobComplete > 0) )
             
         if limit > 0:
-            query.limit(limit)
+            query.order_by(self.meta_log.idx.desc()).limit(limit)
             
         l = [row for row in query]
         return l
@@ -1091,7 +1091,7 @@ class MigrationMetadataManager(MigrationRoot):
             remain_rows = metaq.scalar()
             remain_rows_in_log = logq.scalar() or 0
             
-            complete_list = self.select_complete_range(tablenames = tablenames, limit = 10000)
+            complete_list = self.select_complete_range(tablenames = tablenames, limit = 2000)
 
             daysum = {}
             for row in complete_list:
@@ -1104,10 +1104,13 @@ class MigrationMetadataManager(MigrationRoot):
 
             aggrlist = []
             for dt in daysum:
-                self.log.debug("[%s] : %s",dt,daysum[dt])
                 aggrlist.append( {"dt":dt,"cnt":daysum[dt]})
             
-            aggrlist = sorted(aggrlist, key=lambda k: k['dt']) 
+            aggrlist = sorted(aggrlist, key=lambda k: k['dt'])
+            
+            for row in aggrlist:
+                self.log.debug("[%s] : %s",dt,daysum[dt])
+                             
             # remove first and last day
             if len(aggrlist) > 2:
                 aggrlist = aggrlist[1:-1]
