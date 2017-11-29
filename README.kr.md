@@ -203,7 +203,7 @@ select * from tbl where idx => 300 and idx < 400;
 | regDate   | DATETIME | 타겟 테이블 select 실행 일시   | 2017-11-29 01:02:03             |           |
 | endDate   | DATETIME | jobId 가 DONE 이 되었을 경우 jobComplete 가 1이 된 일시 | 2017-11-29 11:22:33             |           |
 | pkName    | STRING | 타겟 테이블의 Primary Key 컬럼명          | idx             |           |
-| cnt    | INTEGER | 업로드 성공한 row 수. 현재 비구현              | 123             |           |
+| cnt    | INTEGER | 업로드 성공한 row 수. bigquery api : statistics.load.outputRows       | 123      |           |
 | pkUpper    | INTEGER | select 실행 시 최대값 조건에 들어가는 값. [PKName] <= [pkUpper] | 100             |           |
 | pkLower    | INTEGER | select 실행 시 최소값 조건에 들어가는 값. [PKName] > [pkLower]    | 0             |           |
 | pkCurrent    | INTEGER | same as pkUpper             | 99             |           |

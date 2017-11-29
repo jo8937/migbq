@@ -213,7 +213,7 @@ select * from tbl where idx => 300 and idx < 400;
 | regDate   | DATETIME | row insert date   | 2017-11-29 01:02:03             |           |
 | endDate   | DATETIME | when jobId is 'DONE'  | 2017-11-29 11:22:33             |           |
 | pkName    | STRING | [tableNames]'s Primary Key Name          | idx             |           |
-| cnt    | INTEGER | not use now              | 123             |           |
+| cnt    | INTEGER | bigquery api : statistics.load.outputRows         | 123             |           |
 | pkUpper    | INTEGER | each 'select' executed : [PKName] <= [pkUpper] | 100             |           |
 | pkLower    | INTEGER | each 'select' executed : [PKName] > [pkLower]    | 0             |           |
 | pkCurrent    | INTEGER | same as pkUpper  | 99             |           |
