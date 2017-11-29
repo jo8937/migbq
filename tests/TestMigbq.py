@@ -65,6 +65,9 @@ class TestMig(unittest.TestCase):
     def test_04_meta(self):
         commander(["meta", self.configfile])
 
+    def test_05_meta(self):
+        commander(["remaindayall", self.configfile])
+
     def test_99_error_pk_not_numeric(self):    
         commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
     
@@ -75,6 +78,8 @@ class TestMig(unittest.TestCase):
         except:
             print sys.exc_info()
             print "FAIL is OK~!"
+            
+        
             
 class TestMigUtils(unittest.TestCase):
     
@@ -98,6 +103,7 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMig.test_01_check")
 #    sys.argv.append("TestMig.test_00_reset")
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
+    #sys.argv.append("TestMig.test_05_meta")
     sys.argv.append("TestMig")
     unittest.main()
     

@@ -266,8 +266,16 @@ class BQMig(object):
     def retry_error_job(self):
         p = MigrationChildProcess(self.conf)
         p.run_retry_error_job()
-        
-    def print_remain_days(self):
+    
+    def print_remain_days(self, tablenames=None):    
+        m = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, config=self.conf)
+        with m as mig:
+            mig.log.setLevel(logging.DEBUG)
+            r = mig.estimate_remain_days(tablenames)
+        print r
+        return r
+    
+    def print_remain_days_fast_for_mssql(self):
         try:
             conn = _mssql.connect(**self.conf.dbconf)
             maxidx = conn.execute_scalar("select max(idx) as mx from migrationmetadatalog")
@@ -388,7 +396,7 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
@@ -452,8 +460,10 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
         mig.start_jobid_check_and_retry_process()
     elif cmd == "retry":
         mig.retry_error_job()
-    elif cmd == "remainday":
+    elif cmd == "remaindayall":
         mig.print_remain_days()
+    elif cmd == "remainday":
+        mig.print_remain_days(tablenames)
     elif cmd == "progress":
         mig.print_migration_progress() 
     elif cmd == "meta":
