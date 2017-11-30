@@ -102,4 +102,29 @@ def get_connection_info(config_file_path):
         del dbconfig["host"]
         
     return dbconfig 
+
+def union_many_config_file(config_file_basepath):
+    configlist = []
+    for filename in os.listdir(config_file_basepath):
+        if filename.startswith("_"):
+            continue
+        elif filename.endswith(".j2.yml"):
+            conf = parse_config_file( os.path.abspath( os.path.join(config_file_basepath, filename)) )
+        elif filename.endswith(".yml"):
+            conf = parse_config_file( os.path.abspath( os.path.join(config_file_basepath, filename)) )
+        else:
+            continue
+            
+        configlist.append(conf)
+        
+    return configlist
+        
+def get_all_tablenames_in_path(config_file_basepath):
+    configlist = union_many_config_file(config_file_basepath)
     
+    tablelist = []
+    for config in configlist:
+        tables = config.get("in",{}).get("tables",[])
+        tablelist += tables
+
+    return tablelist
