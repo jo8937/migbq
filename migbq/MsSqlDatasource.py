@@ -499,7 +499,7 @@ WHERE
                  
         return tableDateColNameMap
     
-    def select_rowcnt_in_day(self, tablename, dateColName, stddate=None):
+    def select_rowcnt_in_day(self, tablename, dateColName, stddate=None, dateformat="%Y-%m-%d"):
         if not stddate:
             stddate = ( datetime.datetime.today() - timedelta(days=1) )
              
@@ -512,7 +512,7 @@ WHERE
     %s = '%s' 
 """ % (  tablename
         , dateColName
-        , stddate.strftime("%Y-%m-%d %H:%M:%S")
+        , stddate.strftime(dateformat)
         )
 
         self.log.debug("SQL : %s", query)
