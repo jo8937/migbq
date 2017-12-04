@@ -279,6 +279,10 @@ class BQMig(object):
         self.init_migration();
         tablecntmap = {}    
         with self.datasource as ds:
+            
+            if not tablenames:
+                tablenames = [row.tableName for row in ds.meta.select(ds.meta.tableName)]
+            
             colmap = ds.select_index_col_list(tablenames)
             for tname in tablenames:
                 if tname in colmap:
