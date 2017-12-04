@@ -275,6 +275,17 @@ class BQMig(object):
         print r
         return r
     
+    def estimate_rows_per_days(self, tablenames=None):
+        self.init_migration();
+        tablecntmap = {}    
+        with self.datasource as ds:
+            colmap = ds.select_index_col_list(tablenames)
+            for tname in tablenames:
+                if tname in colmap:
+                    cnt = ds.select_rowcnt_in_day(tname, colmap.get(tname))
+                    tablecntmap[tname] = cnt
+        return tablecntmap
+    
     def print_remain_days_fast_for_mssql(self):
         try:
             conn = _mssql.connect(**self.conf.dbconf)
@@ -488,6 +499,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
         mig.diff_exact()
     elif cmd == "reset_for_debug":
         mig.reset_for_debug();
+    elif cmd == "estimate_datasource_per_day":
+        print mig.estimate_rows_per_days(tablenames)        
     else:
         print "comnmand not found. select one of (check/remainday/progress/mig)... now : %s" % cmd
     

@@ -7,3 +7,4 @@ from migbq.migutils import get_all_tablenames_in_path
 
 for tbl in get_all_tablenames_in_path("/tmp/migbq_config"):
     print tbl
+    

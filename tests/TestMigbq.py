@@ -78,8 +78,10 @@ class TestMig(unittest.TestCase):
         except:
             print sys.exc_info()
             print "FAIL is OK~!"
-            
         
+    def test_99_estimate_datasource(self):
+        commander_executer("estimate_datasource_per_day", self.configfile)
+                    
             
 class TestMigUtils(unittest.TestCase):
     
@@ -104,6 +106,6 @@ if __name__ == '__main__':
 #    sys.argv.append("TestMig.test_00_reset")
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     #sys.argv.append("TestMig.test_05_meta")
-    sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_99_estimate_datasource")
     unittest.main()
     

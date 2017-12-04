@@ -28,6 +28,7 @@ from playhouse.sqlite_ext import PrimaryKeyAutoIncrementField
 from MigrationMetadataManager import MigrationMetadataManager
 from MigrationSet import MigrationSet
 import copy
+from datetime import timedelta
 
 class MsSqlDatasource(MigrationMetadataManager):
     def __init__(self, db_config, **data):
@@ -461,3 +462,61 @@ WHERE
             pklist.append(row[pk_name])
         return pklist
     
+    def select_index_col_list(self, tablenames, dateColNames=["yyyymmdd","date"]):
+        if not tablenames:
+            return {}
+        
+        query = """
+        SELECT 
+     TableName = t.name,
+     IndexName = ind.name,
+     IndexId = ind.index_id,
+     ColumnId = ic.index_column_id,
+     ColumnName = col.name 
+FROM 
+     sys.indexes ind 
+INNER JOIN 
+     sys.index_columns ic ON  ind.object_id = ic.object_id and ind.index_id = ic.index_id 
+INNER JOIN 
+     sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id 
+INNER JOIN 
+     sys.tables t ON ind.object_id = t.object_id 
+WHERE 
+     ind.is_primary_key = 0 
+     AND ind.is_unique = 0 
+     AND ind.is_unique_constraint = 0 
+     AND t.is_ms_shipped = 0 
+     and t.name in (%s)
+     ORDER BY 
+     t.name, ind.name, ind.index_id, ic.index_column_id
+        """ % ( ", ".join(["'%s'" % tbl for tbl in tablenames]) )
+        self.log.info("SQL : %s", query)
+        self.conn.execute_query(query)
+        tableDateColNameMap = {}
+        for row in self.conn:
+            if any([datecol in row.get("ColumnName").lower() for datecol in dateColNames ]):
+                tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")  
+                 
+        return tableDateColNameMap
+    
+    def select_rowcnt_in_day(self, tablename, dateColName, stddate=None):
+        if not stddate:
+            stddate = ( datetime.datetime.today() - timedelta(days=1) )
+             
+        query = """
+SELECT 
+    count_big(*) as cnt
+FROM 
+    %s (nolock) 
+WHERE 
+    %s = '%s' 
+""" % (  tablename
+        , dateColName
+        , stddate.strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        self.log.debug("SQL : %s", query)
+        cnt = self.conn.execute_scalar(query)
+        return cnt
+        
+        
