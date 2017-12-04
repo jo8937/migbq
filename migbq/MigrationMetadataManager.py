@@ -64,6 +64,9 @@ class MigrationMetadataManager(MigrationRoot):
         self.forward_retry_wait = 1
         self.meta_cache = {}
         
+        self.metadata_tablename = data["config"].source.get("metadata_tablename")
+        self.metadata_log_tablename = data["config"].source.get("metadata_log_tablename")
+        
         if self.parent_meta_db_config is None:
             raise NameError("meta_db_config not found...")
         
@@ -125,6 +128,9 @@ class MigrationMetadataManager(MigrationRoot):
             pageTokenNext = CharField(null=True)
             class Meta:
                 database = self.DB
+                
+        if self.metadata_tablename:
+            MigrationMetadata.Meta.db_table = self.metadata_tablename
         self.meta = MigrationMetadata
         """
         CREATE INDEX idx_tblname ON migrationmetadatalog (tableName); 
@@ -151,8 +157,10 @@ class MigrationMetadataManager(MigrationRoot):
                 database = self.DB
         #MigrationMetadataLog._meta.auto_increment = True
         #self.DB.register_fields({'primary_key': 'BIGINT IDENTITY'})
+        if self.metadata_log_tablename:
+            MigrationMetadataLog.Meta.db_table = self.metadata_log_tablename
         self.meta_log = MigrationMetadataLog
-        
+
         try:
             self.DB.create_tables([self.meta, self.meta_log], safe = True)
         except OperationalError as err:

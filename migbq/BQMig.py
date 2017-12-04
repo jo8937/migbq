@@ -225,7 +225,9 @@ class BQMig(object):
                         
                 self.log.info("finish...")
                 
-        self.tdforward.wait_for_queue_complete()
+    def export_metadata(self):
+        with self.datasource as ds:
+            self.log.info("....... under construction .........")
                 
     def run_migration(self):
         self.init_migration();
@@ -262,7 +264,11 @@ class BQMig(object):
         p = MigrationChildProcess(self.conf)
         p.run_check_job_finish(tablenames=self.tablenames)
         p.run_retry_error_job(tablenames=self.tablenames)
-    
+        with self.datasource as ds:
+            # update max pk
+            self.log.info("....... CHECK Max PK in Metadata Tables .........")
+            ds.update_last_pk_in_tablenames(self.tablenames)
+        
     def retry_error_job(self):
         p = MigrationChildProcess(self.conf)
         p.run_retry_error_job()

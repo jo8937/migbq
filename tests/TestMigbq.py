@@ -106,6 +106,7 @@ if __name__ == '__main__':
 #    sys.argv.append("TestMig.test_00_reset")
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     #sys.argv.append("TestMig.test_05_meta")
-    sys.argv.append("TestMig.test_99_estimate_datasource")
+    #sys.argv.append("TestMig.test_99_estimate_datasource")
+    sys.argv.append("TestMig")
     unittest.main()
     
