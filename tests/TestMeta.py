@@ -132,12 +132,19 @@ class TestMeta(unittest.TestCase):
             #mig.meta.delete().where(mig.meta.tableName == "persons7").execute()
     
     def test_custom_meta(self):
-        mig = MigrationMetadataManager(
-            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            config = migbq.migutils.get_config(getenv("pymig_config_path"))
-            )
-        with mig as m:
-            print m.meta.select()
+        confdict = migbq.migutils.get_config(getenv("pymig_config_path")).source
+        
+        if confdict.get("meta",{}).get("type"):
+            mig = MigrationMetadataManager(
+                db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                config = migbq.migutils.get_config(getenv("pymig_config_path"))
+                )
+            with mig as m:
+                print m.meta.select()
+        else:
+            self.mig.log.info("metadata connection not in config file. process to standard meta")
+            with self.mig as m:
+                print m.meta.select()
         
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")

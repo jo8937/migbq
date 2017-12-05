@@ -72,6 +72,7 @@ class MigrationMetadataManager(MigrationRoot):
             from migbq.migutils import get_connection_info_dict
             self.meta_db_type = metaconf.get("type")
             self.parent_meta_db_config = get_connection_info_dict(data["config"].source, parentkey="meta")
+            #metaconf
         
         if self.parent_meta_db_config is None:
             raise NameError("meta_db_config not found...")
