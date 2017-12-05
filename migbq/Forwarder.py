@@ -87,16 +87,20 @@ class Forwarder(MigrationRoot):
         return 0        
     
     def wait_for_queue_complete(self):
-        self.log.info("wait for thread (1/1) stop...")
+        self.log.info("wait for thread (1/1) stop... ")
+        self.log.info("send FIN massage to job queue")
+        # send FIN Message
+        self.send_fin_message()
+        
         if self.first_th is not None:
             self.log.info("## all mig finish. wait for queue complete...")
-            # send FIN Message
-            self.first_q.put(None)
             self.first_th.join()
         else:
             self.log.info("## all mig finish. finish sync job~!")
     
-    
+    def send_fin_message(self):
+        self.first_q.put(None)
+        
     # 두번째 큐에서 읽어서 생성된 피클 파일을 읽어서 csv 만들고 업로드.. 
     def execute_async_consumer_upload(self):
         self.execute_async_consumer(self.second_q, self.dq_execute_from_pickle)

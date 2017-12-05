@@ -131,11 +131,19 @@ class TestMeta(unittest.TestCase):
             self.assertEqual(remainDay, 10)
             #mig.meta.delete().where(mig.meta.tableName == "persons7").execute()
     
+    def test_custom_meta(self):
+        mig = MigrationMetadataManager(
+            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+            config = migbq.migutils.get_config(getenv("pymig_config_path"))
+            )
+        with mig as m:
+            print m.meta.select()
+        
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
     #sys.argv.append("TestMeta.test_incomplete_log")
-    sys.argv.append("TestMeta.test_remain_day")
+    sys.argv.append("TestMeta.test_custom_meta")
     unittest.main()
     

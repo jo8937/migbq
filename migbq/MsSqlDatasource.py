@@ -519,4 +519,14 @@ WHERE
         cnt = self.conn.execute_scalar(query)
         return cnt
         
+    def select_day_of_current_pk(self, tablename, dateColName):
+        meta = self.meta.select().where(self.meta.tableName == tablename).get()
+        query = "SELECT %s FROM %s (nolock) WHERE %s = %s" % ( dateColName, meta.tableName, meta.pkName, meta.currentPk)
         
+        self.log.debug("SQL : %s", query)
+        
+        day = self.conn.execute_scalar(query)
+        return day
+    
+    
+    

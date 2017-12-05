@@ -90,14 +90,16 @@ def parse_config_file(config_file_path):
         
     return conf 
 
-def get_connection_info(config_file_path):
+def get_connection_info(config_file_path, parentkey = "in"):
     import yaml
     with open(config_file_path,"rb") as f:
         conf = yaml.load(f)
+    return get_connection_info_dict(conf, parentkey)
+
+def get_connection_info_dict(conf, parentkey = "in"):
+    dbconfig = dict([(key,conf[parentkey][key]) for key in conf[parentkey] if key in ["host","user","password","port","database"]])
     
-    dbconfig = dict([(key,conf["in"][key]) for key in conf["in"] if key in ["host","user","password","port","database"]])
-    
-    if conf["in"]["type"] == "mssql":
+    if conf[parentkey]["type"] == "mssql":
         dbconfig["server"] = dbconfig["host"] 
         del dbconfig["host"]
         

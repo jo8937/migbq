@@ -44,7 +44,7 @@ class TestMssql(unittest.TestCase):
                     id = IntegerField(primary_key=True)
                     name = CharField(null=True)
                     point = BigIntegerField(null=True)
-                    regDate = DateTimeField(default=datetime.datetime.now)
+                    regDate = DateTimeField(default=datetime.datetime.now, index=True)
                     modDate = DateTimeField(null=True)
                     class Meta:
                         database = ds.DB
@@ -67,7 +67,7 @@ class TestMssql(unittest.TestCase):
                 code = CharField(primary_key=True)
                 name = CharField(null=True)
                 point = BigIntegerField(null=True)
-                regDate = DateTimeField(default=datetime.datetime.now)
+                regDate = DateTimeField(default=datetime.datetime.now, index=True)
                 modDate = DateTimeField(null=True)
                 class Meta:
                     database = ds.DB

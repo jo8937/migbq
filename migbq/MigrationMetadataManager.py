@@ -64,8 +64,14 @@ class MigrationMetadataManager(MigrationRoot):
         self.forward_retry_wait = 1
         self.meta_cache = {}
         
-        self.metadata_tablename = data["config"].source.get("metadata_tablename")
-        self.metadata_log_tablename = data["config"].source.get("metadata_log_tablename")
+        metaconf = data["config"].source.get("meta",{})
+        self.metadata_tablename = metaconf.get("table")
+        self.metadata_log_tablename = metaconf.get("log_table")
+        
+        if all([metaconf.get("type"), metaconf.get("host"), metaconf.get("user")]):
+            from migbq.migutils import get_connection_info_dict
+            self.meta_db_type = metaconf.get("type")
+            self.parent_meta_db_config = get_connection_info_dict(data["config"].source, parentkey="meta")
         
         if self.parent_meta_db_config is None:
             raise NameError("meta_db_config not found...")
@@ -98,6 +104,10 @@ class MigrationMetadataManager(MigrationRoot):
             self.log.info("init SQLITE .... ")
             
             sqlite_filename = self.parent_meta_db_config.get("sqlite_filename")
+            
+            if sqlite_filename is None:
+                sqlite_filename = self.parent_meta_db_config.get("database")
+                    
             if sqlite_filename is None:
                 raise ValueError("SQLITE File not found ... sql lite 디비파일을 지정해야합니다")
 
@@ -130,7 +140,7 @@ class MigrationMetadataManager(MigrationRoot):
                 database = self.DB
                 
         if self.metadata_tablename:
-            MigrationMetadata.Meta.db_table = self.metadata_tablename
+            MigrationMetadata._meta.db_table = self.metadata_tablename
         self.meta = MigrationMetadata
         """
         CREATE INDEX idx_tblname ON migrationmetadatalog (tableName); 
@@ -158,7 +168,7 @@ class MigrationMetadataManager(MigrationRoot):
         #MigrationMetadataLog._meta.auto_increment = True
         #self.DB.register_fields({'primary_key': 'BIGINT IDENTITY'})
         if self.metadata_log_tablename:
-            MigrationMetadataLog.Meta.db_table = self.metadata_log_tablename
+            MigrationMetadataLog._meta.db_table = self.metadata_log_tablename
         self.meta_log = MigrationMetadataLog
 
         try:

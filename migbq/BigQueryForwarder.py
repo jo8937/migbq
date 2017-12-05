@@ -44,6 +44,8 @@ class BigQueryForwarder(Forwarder):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.log.info("exit finally block for BigqueryForwarder...")
+        super( BigQueryForwarder, self).send_fin_message()
         return False
     
     def create_bq_schema(self, col_type_map):

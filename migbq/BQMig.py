@@ -245,16 +245,15 @@ class BQMig(object):
     def run_migration_some_pk(self, tablename, pklist_arg):
         self.init_migration();
         pklist = [long(pk) for pk in pklist_arg]
-        with self.datasource as ds:
-            with self.tdforward as td:
+        with self.tdforward as td:
+            with self.datasource as ds:
                 pk_range = (min(pklist), max(pklist))
                 log_idx = ds.insert_log(tablename, pk_range)
                 datalist = ds.select_datalist_in_use_hashlist(tablename, pklist)
                 td.execute_streaming_api(datalist, tablename, ds.pk_map[tablename], pk_range, ds.col_map[tablename])
                 self.log.info("finish...%s , %s", tablename, pklist)
                 ds.update_insert_log(log_idx, len(datalist), checkComplete=999)
-                
-        self.tdforward.wait_for_queue_complete()
+            td.wait_for_queue_complete()
                 
     def start_jobid_check_process(self):
         p = MigrationChildProcess(self.conf)
@@ -264,6 +263,7 @@ class BQMig(object):
         p = MigrationChildProcess(self.conf)
         p.run_check_job_finish(tablenames=self.tablenames)
         p.run_retry_error_job(tablenames=self.tablenames)
+        self.init_migration()
         with self.datasource as ds:
             # update max pk
             self.log.info("....... CHECK Max PK in Metadata Tables .........")
@@ -295,7 +295,21 @@ class BQMig(object):
                     cnt = ds.select_rowcnt_in_day(tname, colmap.get(tname))
                     tablecntmap[tname] = cnt
         return tablecntmap
-    
+
+    def get_day_of_current_pk(self, tablenames=None):
+        self.init_migration();
+        tablecntmap = {}    
+        with self.datasource as ds:
+            if not tablenames:
+                tablenames = [row.tableName for row in ds.meta.select(ds.meta.tableName)]
+            
+            colmap = ds.select_index_col_list(tablenames)
+            for tname in tablenames:
+                if tname in colmap:
+                    cnt = ds.select_day_of_current_pk(tname, colmap.get(tname))
+                    tablecntmap[tname] = cnt
+        return tablecntmap
+        
     def print_remain_days_fast_for_mssql(self):
         try:
             conn = _mssql.connect(**self.conf.dbconf)

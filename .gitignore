@@ -30,3 +30,4 @@ pip-log.txt
 /dist/
 .pypirc
 build.bat
+testdocs.txt
