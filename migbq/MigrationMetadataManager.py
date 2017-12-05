@@ -64,7 +64,8 @@ class MigrationMetadataManager(MigrationRoot):
         self.forward_retry_wait = 1
         self.meta_cache = {}
         
-        metaconf = data["config"].source.get("meta",{})
+        metaconf = data["config"].source.get("meta",{}) or {}
+        
         self.metadata_tablename = metaconf.get("table")
         self.metadata_log_tablename = metaconf.get("log_table")
         

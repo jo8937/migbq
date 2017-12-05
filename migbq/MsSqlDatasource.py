@@ -472,7 +472,8 @@ WHERE
      IndexName = ind.name,
      IndexId = ind.index_id,
      ColumnId = ic.index_column_id,
-     ColumnName = col.name 
+     ColumnName = col.name,
+     ColumnTypeId = col.system_type_id
 FROM 
      sys.indexes ind 
 INNER JOIN 
@@ -494,8 +495,10 @@ WHERE
         self.conn.execute_query(query)
         tableDateColNameMap = {}
         for row in self.conn:
-            if any([datecol in row.get("ColumnName").lower() for datecol in dateColNames ]):
-                tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")  
+            # get date or time type columns... 
+            if any([datecol in row.get("ColumnName").lower() for datecol in dateColNames ]) or \
+                row.get("ColumnTypeId",0) in [40,42,61,167,175]:
+                tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")
                  
         return tableDateColNameMap
     
@@ -520,7 +523,11 @@ WHERE
         return cnt
         
     def select_day_of_current_pk(self, tablename, dateColName):
-        meta = self.meta.select().where(self.meta.tableName == tablename).get()
+        q = self.meta.select().where(self.meta.tableName == tablename)
+        if not q:
+            return None
+        
+        meta = q.get()
         query = "SELECT %s FROM %s (nolock) WHERE %s = %s" % ( dateColName, meta.tableName, meta.pkName, meta.currentPk)
         
         self.log.debug("SQL : %s", query)

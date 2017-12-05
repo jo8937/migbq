@@ -525,6 +525,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
         mig.reset_for_debug();
     elif cmd == "estimate_datasource_per_day":
         print mig.estimate_rows_per_days(tablenames)        
+    elif cmd == "datasource_current_pk_day":
+        print mig.get_day_of_current_pk(tablenames)        
     else:
         print "comnmand not found. select one of (check/remainday/progress/mig)... now : %s" % cmd
     

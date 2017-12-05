@@ -82,6 +82,8 @@ class TestMig(unittest.TestCase):
     def test_99_estimate_datasource(self):
         commander_executer("estimate_datasource_per_day", self.configfile)
                     
+    def test_99_datasource_current_pk_day(self):
+        commander_executer("datasource_current_pk_day", self.configfile)
             
 class TestMigUtils(unittest.TestCase):
     
@@ -107,6 +109,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     #sys.argv.append("TestMig.test_05_meta")
     #sys.argv.append("TestMig.test_99_estimate_datasource")
-    sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_99_datasource_current_pk_day")
+    #sys.argv.append("TestMig")
     unittest.main()
     
