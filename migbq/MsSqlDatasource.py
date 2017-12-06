@@ -462,7 +462,7 @@ WHERE
             pklist.append(row[pk_name])
         return pklist
     
-    def select_index_col_list(self, tablenames, dateColNames=["yyyymmdd","date"]):
+    def select_index_col_list(self, tablenames, dateColNames=["yyyymmdd","date","dt"]):
         if not tablenames:
             return {}
         
@@ -494,10 +494,18 @@ WHERE
         self.log.info("SQL : %s", query)
         self.conn.execute_query(query)
         tableDateColNameMap = {}
+        datalist = []
         for row in self.conn:
+            datalist.append(row)
+        
+        for row in datalist:
             # get date or time type columns... 
-            if any([datecol in row.get("ColumnName").lower() for datecol in dateColNames ]) or \
-                row.get("ColumnTypeId",0) in [40,42,61,167,175]:
+            if [datecol in row.get("ColumnName").lower() for datecol in dateColNames ]:
+                tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")
+
+        for row in datalist:
+            # get date or time type columns... 
+            if row.get("TableName") not in tableDateColNameMap and row.get("ColumnTypeId",0) in [40,42,61,175]:
                 tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")
                  
         return tableDateColNameMap

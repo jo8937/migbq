@@ -126,12 +126,13 @@ class TestJobChecker():
         
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
-    sys.argv.append("TestMig.test_00_reset")
-    sys.argv.append("TestMig.test_01_mig")
-    sys.argv.append("TestMig.test_02_check")
+#     sys.argv.append("TestMig.test_00_reset")
+#     sys.argv.append("TestMig.test_01_mig")
+#     sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     #sys.argv.append("TestMig.test_05_meta")
     #sys.argv.append("TestMig.test_99_estimate_datasource")
+    sys.argv.append("TestMig.test_99_datasource_current_pk_day")
     #sys.argv.append("TestMig.test_05_meta")
     #sys.argv.append("TestMig")
     unittest.main()
