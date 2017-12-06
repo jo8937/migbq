@@ -500,12 +500,12 @@ WHERE
         
         for row in datalist:
             # get date or time type columns... 
-            if [datecol in row.get("ColumnName").lower() for datecol in dateColNames ]:
+            if any([datecol in row.get("ColumnName").lower() for datecol in dateColNames ]):
                 tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")
 
         for row in datalist:
             # get date or time type columns... 
-            if row.get("TableName") not in tableDateColNameMap and row.get("ColumnTypeId",0) in [40,42,61,175]:
+            if (row.get("TableName") not in tableDateColNameMap) and (row.get("ColumnTypeId",0) in [40,42,61,175]):
                 tableDateColNameMap[row.get("TableName")] = row.get("ColumnName")
                  
         return tableDateColNameMap
