@@ -178,7 +178,7 @@ class BQMig(object):
                                         tablenames = self.tablenames,
                                         logname = self.logname,
                                         config = conf
-                                        ) 
+                                        )
         
         self.tdforward = BigQueryForwarder(dataset=conf.datasetname,
                                            prefix="",
@@ -310,6 +310,18 @@ class BQMig(object):
                     tablecntmap[tname] = cnt
         return tablecntmap
         
+    def get_remain_counts(self, tablenames=None):
+        self.init_migration();
+        tablecntmap = {}    
+        with self.datasource as ds:
+            for row in ds.meta.select():
+                if tablenames and (row.tableName not in tablenames):
+                    continue
+                cnt = ds.count_range(row.tableName, (row.currentPk, row.lastPk), row.pkName)
+                tablecntmap[row.tableName] = cnt
+                
+        return tablecntmap
+            
     def print_remain_days_fast_for_mssql(self):
         try:
             conn = _mssql.connect(**self.conf.dbconf)
