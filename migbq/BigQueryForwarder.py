@@ -185,7 +185,15 @@ class BigQueryForwarder(Forwarder):
                 if not ret:
                     self.log.error("ERROR on check complate1 %s" , migset.update_insert_log_callback) 
                 return 0
-        
+
+        if migset.cnt == 0:
+            self.log.error("# ! # Row count is 0 in TABLE [%s] %s ~ %s" , tablename, pk_range[0], pk_range[1])
+            migset.jobId = ""
+            ret = migset.complete_callback() # insert 실행끝났다고 알려줌...
+            if not ret:
+                self.log.error("ERROR on check complate2 %s" , migset.update_insert_log_callback) 
+            return 0
+
         tbl = self.get_table_create_if_needed(tablename, col_type_map)
 
         with open(migset.csvfile, 'rb') as fp:

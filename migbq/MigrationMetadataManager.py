@@ -948,8 +948,6 @@ class MigrationMetadataManager(MigrationRoot):
             
         # 보낸게 0 건이라도 일단 다음 pk 를 가져오도록 함... -1 만 아니면 됨.
         if(sendrowcnt > 0):
-
-            
             self.save_pk_range(tablename, next_range, sendrowcnt)
             self.update_insert_log(job_idx, sendrowcnt)
             self.log.info("ok")
@@ -959,6 +957,7 @@ class MigrationMetadataManager(MigrationRoot):
                 time.sleep(self.wait_second_for_next)
             
             return True
+        
         elif sendrowcnt == 0:
             # PK 가 중간에 비어있는 경우를 대비...
             # max pk 를 다시 검색하고 ... max 보다 작은데도 불구하고 row 가 0 이라면 그대로 진핸.
@@ -1096,21 +1095,48 @@ class MigrationMetadataManager(MigrationRoot):
         
         return result_list
     
-    def estimate_remain_days(self, tablenames=None):
+    def get_estimate_remain_days_remain_rows_rough(self, tablenames=None):
+        metaq = self.meta.select(fn.Sum(self.meta.lastPk - self.meta.currentPk))
+       
+        if tablenames:
+            metaq = metaq.where(self.meta.tableName << tablenames)
+             
+        remain_rows = metaq.scalar()
+        remain_rows_in_log = self.get_remain_rows_in_log(tablenames)
+        return (remain_rows, remain_rows_in_log)
+
+    def get_estimate_remain_days_remain_rows_real(self, tablenames=None):
+        metarows = self.meta.select()
+        remain_rows = 0
+        for row in metarows:
+            if tablenames and (row.tableName in tablenames):
+                realcnt = self.count_range(row.tableName, (row.currentPk, row.lastPk), row.pkName)
+                self.log.info("TABLE [%s] %s ~ %s COUNT() : %s ",row.tableName,row.currentPk, row.lastPk, realcnt)
+                remain_rows += realcnt 
+        
+        remain_rows_in_log = self.get_remain_rows_in_log(tablenames)
+        return (remain_rows, remain_rows_in_log)
+    
+    def get_remain_rows_in_log(self, tablenames=None):
+        #logq = self.meta_log.select(fn.Sum(self.meta_log.cnt))
+        logq = self.meta_log.select(fn.Sum(self.meta_log.pkUpper - self.meta_log.pkLower))
+        
+        if tablenames:
+            logq = logq.where((self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0)) & (self.meta_log.tableName << tablenames))
+        else:
+            logq = logq.where(self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0))
+             
+        remain_rows_in_log = logq.scalar() or 0
+        
+        return remain_rows_in_log 
+    
+    def estimate_remain_days(self, tablenames=None, realCount=False):
         try:
             #maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
-            
-            metaq = self.meta.select(fn.Sum(self.meta.lastPk - self.meta.currentPk))
-            logq = self.meta_log.select(fn.Sum(self.meta_log.pkUpper - self.meta_log.pkLower))
-            #logq = self.meta_log.select(fn.Sum(self.meta_log.cnt))
-            if tablenames:
-                metaq = metaq.where(self.meta.tableName << tablenames)
-                logq = logq.where((self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0)) & (self.meta_log.tableName << tablenames))
+            if realCount:
+                remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_real(tablenames)
             else:
-                logq = logq.where(self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0))
-                 
-            remain_rows = metaq.scalar()
-            remain_rows_in_log = logq.scalar() or 0
+                remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_rough(tablenames)
             
             complete_list = self.select_complete_range(tablenames = tablenames, limit = 2000)
 

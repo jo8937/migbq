@@ -115,11 +115,35 @@ class TestMssql(unittest.TestCase):
         with self.datasource as sel:
             print sel.generate_where_query_in("a",(1,2,3,4,5,19,10,20,21,23,25))
 
-    
+    def test_remain_day(self):
+        from datetime import datetime
+        with self.datasource as mig:
+            mig.log.setLevel(logging.DEBUG)
+            mig.DB.execute_sql("delete from persons5",())
+            for i in xrange(0,50):
+                mig.DB.execute_sql("insert into persons5(id, name, regDate) values(%s,'%s', getdate())" % (i,"test-%s"%i),())
+            for i in xrange(100,151):
+                mig.DB.execute_sql("insert into persons5(id, name, regDate) values(%s,'%s', getdate())" % (i,"test-%s"%i),())    
+                                
+            mig.meta_log.delete().where(mig.meta_log.tableName == "persons5").execute()
+            mig.meta.delete().where(mig.meta.tableName == "persons5").execute()
+            mig.meta.insert(tableName = "persons5", lastPk = 151, currentPk = 51)._execute()
+            mig.meta_log.insert(tableName = "persons5", cnt=10, pkName = "id",pkUpper = 10,pkLower = 1,pkCurrent = 10, endDate = datetime.strptime("2017-11-25 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons5", cnt=10, pkName = "id",pkUpper = 20,pkLower = 11,pkCurrent = 10, endDate = datetime.strptime("2017-11-26 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons5", cnt=10, pkName = "id",pkUpper = 30,pkLower = 21,pkCurrent = 20, endDate = datetime.strptime("2017-11-27 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons5", cnt=10, pkName = "id",pkUpper = 40,pkLower = 31,pkCurrent = 30, endDate = datetime.strptime("2017-11-30 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+            mig.meta_log.insert(tableName = "persons5", cnt=10, pkName = "id",pkUpper = 50,pkLower = 41,pkCurrent = 30, endDate = datetime.strptime("2017-11-30 01:02:03","%Y-%m-%d %H:%M:%S"), jobId="ok", jobComplete = 1)._execute()
+
+            remainDay = mig.estimate_remain_days(tablenames = ["persons5"], realCount=True)
+            print "r : %s" % remainDay
+            
+            self.assertEqual(remainDay, 5)
+            
+            
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
-    sys.argv.append("TestMssql.test_insert_sample_tables")
+    sys.argv.append("TestMssql.test_remain_day")
     unittest.main()
     

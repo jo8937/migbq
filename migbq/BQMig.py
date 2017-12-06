@@ -281,6 +281,14 @@ class BQMig(object):
         print r
         return r
     
+    def print_remain_days_real(self, tablenames=None):    
+        m = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, config=self.conf)
+        with m as mig:
+            mig.log.setLevel(logging.DEBUG)
+            r = mig.estimate_remain_days(tablenames, realCount=True)
+        print r
+        return r
+
     def estimate_rows_per_days(self, tablenames=None):
         self.init_migration();
         tablecntmap = {}    
