@@ -1101,7 +1101,8 @@ class MigrationMetadataManager(MigrationRoot):
             #maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
             
             metaq = self.meta.select(fn.Sum(self.meta.lastPk - self.meta.currentPk))
-            logq = self.meta_log.select(fn.Sum(self.meta_log.pkUpper - self.meta_log.pkLower))
+            #logq = self.meta_log.select(fn.Sum(self.meta_log.pkUpper - self.meta_log.pkLower))
+            logq = self.meta_log.select(fn.Sum(self.meta_log.cnt))
             if tablenames:
                 metaq = metaq.where(self.meta.tableName << tablenames)
                 logq = logq.where((self.meta_log.jobId.is_null() | (self.meta_log.jobComplete < 0)) & (self.meta_log.tableName << tablenames))
