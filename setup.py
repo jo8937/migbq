@@ -17,7 +17,7 @@ setup(name='migbq',
         'pymssql>=2.1.1',
         'peewee-mssql>=0.1.0',
         'concurrent-log-handler>=0.9.7',
-        'pyyaml>=3.12',
+        'pyyaml>=3.10',
         'google-cloud-bigquery==0.27.0',
         'Jinja2>=2.10',
         'httplib2'
