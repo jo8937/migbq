@@ -13,6 +13,7 @@ import shutil
 import traceback
 
 from MigrationSet import MigrationSetJobResult
+import gzip
     
 def check_job_finish(migset):
     #BQ_TEMP_CSVPATH = migset.csvfile
@@ -71,6 +72,17 @@ def check_job_finish(migset):
         
     return ret
 
+def validate_gzip_csv_file_linesize(temp_filename):
+    try:
+        with gzip.open(temp_filename, 'rb') as f:        
+            for i, l in enumerate(f):
+                pass
+        return True
+    except:
+        print "error read %s . SKIP Read FRom file and retry Select - Upload " % temp_filename
+        return False
+
+
 def retry_error_job(migset):
     try:
             
@@ -80,6 +92,7 @@ def retry_error_job(migset):
          
         csvfile = os.path.join(migset.csvfile, filename) 
         
+        #if os.path.isfile(csvfile) and os.path.exists(csvfile) and validate_gzip_csv_file_linesize(csvfile):
         if os.path.isfile(csvfile) and os.path.exists(csvfile):
             bq = bigquery.Client(migset.bq_project)
             tbl = bq.dataset(migset.bq_dataset).table(tablename)

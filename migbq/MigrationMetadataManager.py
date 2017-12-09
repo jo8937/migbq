@@ -63,6 +63,7 @@ class MigrationMetadataManager(MigrationRoot):
         self.forward_retry_cnt_limit = 10
         self.forward_retry_wait = 1
         self.meta_cache = {}
+        self.dest_table_field_list_map = {}
         
         metaconf = data["config"].source.get("meta",{}) or {}
         
@@ -161,7 +162,7 @@ class MigrationMetadataManager(MigrationRoot):
             pkLower = BigIntegerField(null=True)
             pkCurrent = BigIntegerField(null=True)
             jobId = CharField(null=True, index = True)
-            errorMessage = CharField(null=True)
+            errorMessage = CharField(null=True, max_length=4000)
             checkComplete = SmallIntegerField(null=False, default=0, index = True)
             jobComplete = SmallIntegerField(null=False, default=0, index = True)
             pageToken = CharField(null=True)
@@ -412,7 +413,12 @@ class MigrationMetadataManager(MigrationRoot):
             elif migret.cnt == 0:
                 q = self.meta_log.update(checkComplete = self.meta_log.checkComplete + 1, endDate = datetime.datetime.now()).where(self.meta_log.idx == migret.log_idx)
             else:
-                q = self.meta_log.update(jobComplete = -1, endDate = datetime.datetime.now(), errorMessage = migret.errorMessage).where(self.meta_log.idx == migret.log_idx)
+                msg = migret.errorMessage
+                if len(msg) > 4000:
+                    msg = msg[:4000]
+                    self.log.warn("idx[%s] error message truncated : %s", migret.log_idx, msg)
+                q = self.meta_log.update(jobComplete = -1, endDate = datetime.datetime.now(), errorMessage = msg).where(self.meta_log.idx == migret.log_idx)
+                    
             self.log.debug("update_job_finish : %s", migret.log_idx)
             q.execute()
 
@@ -1130,15 +1136,19 @@ class MigrationMetadataManager(MigrationRoot):
         
         return remain_rows_in_log 
     
+    def sync_field_list_src_and_dest(self, forward):
+        for tname in self.tablenames:
+            self.dest_table_field_list_map[tname] = forward.get_table_field_and_type_list(tname, self.col_map[tname])
+            
     def estimate_remain_days(self, tablenames=None, realCount=False):
         try:
-            #maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
+            maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
             if realCount:
                 remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_real(tablenames)
             else:
                 remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_rough(tablenames)
             
-            complete_list = self.select_complete_range(tablenames = tablenames, limit = 2000)
+            complete_list = self.select_complete_range(tablenames = tablenames, limit = maxidx / 2)
 
             daysum = {}
             for row in complete_list:

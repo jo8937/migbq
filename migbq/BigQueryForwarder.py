@@ -15,6 +15,7 @@ from migbq.migutils import get_logger
 import logging
 from google.cloud import bigquery
 from Forwarder import Forwarder
+from migbq import migutils
 
 class BigQueryForwarder(Forwarder):
     def __init__(self, **options):
@@ -68,6 +69,10 @@ class BigQueryForwarder(Forwarder):
             field_list.append(field)
         return field_list
     
+    def get_table_field_and_type_list(self, tablename=None, src_col_type_map = None):
+        tbl = self.get_table_create_if_needed(tablename, src_col_type_map)
+        return [(field.name, field.field_type) for field in tbl.schema]
+        
     def get_table_create_if_needed(self, tablename=None, col_type_map = None):
         tbl = self.table_map.get(tablename)
         bq_tablename = "%s%s" % (self.table_prefix, tablename)
@@ -76,6 +81,7 @@ class BigQueryForwarder(Forwarder):
             if tbl.exists():
                 self.log.debug("table exists. load table schema...")
                 tbl.reload()
+                self.check_and_auto_add_field(tbl, col_type_map)
             else:
                 self.log.debug("table NOT exists. create table! ")
                 #tbl.friendly_name = UPDATED_FRIENDLY_NAME
@@ -90,7 +96,29 @@ class BigQueryForwarder(Forwarder):
                 tbl.reload()
                 self.log.debug("create table %s ... OK " %  bq_tablename)
             self.table_map[tablename] = tbl
+        
         return tbl
+    
+    def check_and_auto_add_field(self, bqtbl, col_type_map):
+        #bigquery_tabletbl
+        #col_type_map
+        #NEW_SCHEMA = bqtbl.schema[:]
+    
+        fields = [] 
+        bqcols = [field.name for field in bqtbl.schema] 
+        for col, tp in col_type_map.items():
+            if col not in bqcols:
+                self.log.info("field not exists in bigquery %s (%s)", col, tp)
+                fields.append(bigquery.schema.SchemaField(col, migutils.estimate_bigquery_type(tp), description="add %s" % datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S") ))
+                
+        if fields and len(fields) > 0:
+            fields = bqtbl.schema[:] + fields
+            bqtbl.schema = fields
+            bqtbl.update()
+            bqtbl.reload()
+            self.log.info("table_map updated %s", bqtbl.name)
+            self.table_map[bqtbl.name] = bqtbl
+        
     
     def save_json_data(self, tbl, datalist, tablename=None, pkname=None, pk_range=None, col_type_map = None):
         

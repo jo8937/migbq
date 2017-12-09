@@ -37,7 +37,7 @@ class MsSqlDatasource(MigrationMetadataManager):
         self.log.setLevel(logging.INFO)
         self.db_config = db_config
         self.select_size = data.get("listsize",10)
-        self.bq_table_map = None
+        #self.bq_table_map = None
         self.csvpath = data["config"].csvpath
         
     def __enter__(self):
@@ -314,12 +314,12 @@ WHERE
         
         col_type_map = self.col_map[tablename]
         col_list = []
-        if self.bq_table_map is not None:
-            col_list = [field.name for field in self.bq_table_map[tablename].schema]
-        else:
-            self.log.error("BigQuery Map is none//")
-            col_list = col_type_map.keys()
-        
+        for f in self.dest_table_field_list_map[tablename]:
+            fieldname = f[0]
+            if fieldname not in col_type_map:
+                self.log.error("### ! ### Field not exists in datasource : [%s].[%s] (%s)", tablename, fieldname, f[1])
+            col_list.append(fieldname)
+
         cnt = 0
         with gzip.open(migset.csvfile, 'wb') as outfile:
             writer = csv.writer(outfile, quoting=csv.QUOTE_NONNUMERIC)
@@ -328,11 +328,11 @@ WHERE
                 for key in col_list:
                     val = rowori.get(key)
                     
-                    if col_type_map[key] == "INTEGER":
+                    if col_type_map.get(key) == "INTEGER":
                         row.append(long(val))
-                    elif col_type_map[key] == "FLOAT":
+                    elif col_type_map.get(key) == "FLOAT":
                         row.append(float(val))
-                    elif col_type_map[key] == "TIMESTAMP":
+                    elif col_type_map.get(key) == "TIMESTAMP":
                         row.append(unicode(val).encode("utf-8"))
                     else:
                         if val is None:

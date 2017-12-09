@@ -69,6 +69,7 @@ class MigrationChildProcess(object):
         mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = tablenames, config=self.conf)
         print "start run_retry_error_job() ..."
         with mig as m:
+            m.log.setLevel(logging.DEBUG)
             result_list = m.check_job_retry(retry_error_job, self.migset_process)
             
             if result_list:
@@ -109,6 +110,7 @@ class MigrationChildProcess(object):
         ds.log.setLevel(logging.DEBUG)
         with ds:
             with fw:
+                ds.sync_field_list_src_and_dest(fw)
                 job_idx = ds.insert_log(migset.tablename, migset.pk_range)
                 ds.execute_range(migset.tablename, migset.pk_range, fw.execute, job_idx)
                 q = ds.meta_log.update(checkComplete = 3, jobComplete = 2).where(ds.meta_log.idx == migset.log_idx)
@@ -206,9 +208,11 @@ class BQMig(object):
             ds.update_last_pk_in_tablenames(self.tablenames)
             
             with self.tdforward as td:
-                ds.bq_table_map = {}
-                for tname in self.tablenames:
-                    ds.bq_table_map[tname] = td.get_table_create_if_needed(tname, ds.col_map[tname])
+                #ds.bq_table_map = {}
+                #for tname in self.tablenames:
+                #    ds.bq_table_map[tname] = td.get_table_create_if_needed(tname, ds.col_map[tname])
+                
+                ds.sync_field_list_src_and_dest(td)
                 
                 results = [True]
                 
@@ -258,11 +262,15 @@ class BQMig(object):
     def start_jobid_check_process(self):
         p = MigrationChildProcess(self.conf)
         p.run_check_job_finish()
+        self.update_last_pk()
         
     def start_jobid_check_and_retry_process(self):
         p = MigrationChildProcess(self.conf)
         p.run_check_job_finish(tablenames=self.tablenames)
         p.run_retry_error_job(tablenames=self.tablenames)
+        self.update_last_pk()
+        
+    def update_last_pk(self):
         self.init_migration()
         with self.datasource as ds:
             # update max pk
@@ -512,6 +520,10 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
     tablenames = mig.tablenames
     
     if cmd == "check":
+        #mig.start_jobid_check_and_retry_process()
+        mig.start_jobid_check_process()
+    elif cmd == "check_and_retry":
+        #mig.start_jobid_check_and_retry_process()
         mig.start_jobid_check_and_retry_process()
     elif cmd == "retry":
         mig.retry_error_job()

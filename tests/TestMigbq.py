@@ -60,6 +60,7 @@ class TestMig(unittest.TestCase):
         self.wait_for_mig_end()
         print "---------------- mig end --------------------------"
                 
+    
     def wait_for_mig_end(self, retry_cnt = 0):
         retry_max = 10
         migation = MigrationMetadataManager(
@@ -69,6 +70,7 @@ class TestMig(unittest.TestCase):
             config = migbq.migutils.get_config(getenv("pymig_config_path"))
             )
         with migation as mig: 
+            mig.log.setLevel(logging.DEBUG)
             for row in mig.meta_log.select():
                 if row.jobId is None:
                     print "idx(%s) jobId is null. wait 5 second for migbq finish..." % row.idx
@@ -79,8 +81,24 @@ class TestMig(unittest.TestCase):
                     return self.wait_for_mig_end(retry_cnt + 1)
         return None
     
+    def make_error_job(self):
+        migation = MigrationMetadataManager(
+            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+            meta_db_type = "mssql",
+            meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+            config = migbq.migutils.get_config(getenv("pymig_config_path"))
+            )
+        with migation as mig:
+            mig.log.setLevel(logging.DEBUG)
+            #print "..."
+            mig.meta_log.update(jobComplete = -1).execute()
+    
     def test_02_check(self):
         commander(["check", self.configfile])
+            
+    def test_02_retry(self):
+        self.make_error_job()
+        commander(["retry", self.configfile])
             
     def test_03_sync(self):
         commander(["sync", self.configfile])
@@ -127,13 +145,14 @@ class TestJobChecker():
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_reset")
-#     sys.argv.append("TestMig.test_01_mig")
-#     sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_99_error_pk_not_numeric_raise")
     #sys.argv.append("TestMig.test_05_meta")
     #sys.argv.append("TestMig.test_99_estimate_datasource")
     #sys.argv.append("TestMig.test_99_datasource_current_pk_day")
     #sys.argv.append("TestMig.test_05_meta")
-    sys.argv.append("TestMig")
+    #sys.argv.append("TestMig.test_01_mig")
+    sys.argv.append("TestMig.test_02_check")
+    #sys.argv.append("TestMig.test_02_retry")
+    #sys.argv.append("TestMig")
     unittest.main()
     
