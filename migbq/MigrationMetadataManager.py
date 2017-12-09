@@ -1139,29 +1139,33 @@ class MigrationMetadataManager(MigrationRoot):
     def sync_field_list_src_and_dest(self, forward):
         for tname in self.tablenames:
             self.dest_table_field_list_map[tname] = forward.get_table_field_and_type_list(tname, self.col_map[tname])
-            
+    
+    def select_complete_range_impl(self, tablenames=None, realCount=False, maxidx=1):
+        self.log.warn("select_complete_range_impl must be inherit")
+        return None
+    
     def estimate_remain_days(self, tablenames=None, realCount=False):
         try:
-            maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
+            #maxidx = self.meta_log.select(fn.Max(self.meta_log.idx)).scalar()
             if realCount:
                 remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_real(tablenames)
             else:
                 remain_rows, remain_rows_in_log = self.get_estimate_remain_days_remain_rows_rough(tablenames)
             
-            complete_list = self.select_complete_range(tablenames = tablenames, limit = maxidx / 2)
+            aggrlist = self.select_complete_range_impl(tablenames = tablenames, realCount = realCount)
 
-            daysum = {}
-            for row in complete_list:
-                if row.endDate:
-                    #dt = row.endDate.strftime("%Y-%m-%d")
-                    dt = row.endDate[:10]
-                    if dt not in daysum:
-                        daysum[dt] = 0 
-                    daysum[dt] += row.cnt if row.cnt > 0 else row.pkUpper - row.pkLower 
-
-            aggrlist = []
-            for dt in daysum:
-                aggrlist.append( {"dt":dt,"cnt":daysum[dt]})
+#             daysum = {}
+#             for row in complete_list:
+#                 if row.endDate:
+#                     #dt = row.endDate.strftime("%Y-%m-%d")
+#                     dt = row.endDate[:10]
+#                     if dt not in daysum:
+#                         daysum[dt] = 0 
+#                     daysum[dt] += row.cnt if row.cnt > 0 else row.pkUpper - row.pkLower 
+# 
+#             aggrlist = []
+#             for dt in daysum:
+#                 aggrlist.append( {"dt":dt,"cnt":daysum[dt]})
             
             aggrlist = sorted(aggrlist, key=lambda k: k['dt'])
             

@@ -544,4 +544,16 @@ WHERE
         return day
     
     
+    def select_complete_range_impl(self, tablenames=None, realCount=False):
+        selcol = "cnt" if realCount else "pkUpper - pkLower"
+        sql = """
+            SELECT top 7 convert(varchar, enddate, 112) as dt, sum(%s) as cnt
+FROM migrationmetadatalog (nolock)
+where jobId is not null and jobComplete > 0
+group by convert(varchar, enddate, 112) 
+order by dt desc  
+            """ % (selcol)
+        self.log.info("remain day sql : %s",sql)
+        self.conn.execute_query(sql)
+        return [row for row in self.conn]
     
