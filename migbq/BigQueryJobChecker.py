@@ -35,6 +35,14 @@ def check_job_finish(migset):
                 # 에러
                 errmsg = ujson.dumps(errors)
                 print "jodIb :%s has error : %s" % (jobId,errmsg) 
+                
+                
+                filename = "migbq-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
+                csvfile = os.path.join(migset.csvfile, filename) 
+                if os.path.isfile(csvfile) and os.path.exists(csvfile):
+                    print "!! check job found error. delete error file : %s" % csvfile     
+                    os.remove(csvfile)
+            
                 ret = MigrationSetJobResult(migset.log_idx, -1, msg = errmsg)
             else:
                 # 성공
