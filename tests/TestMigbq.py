@@ -151,8 +151,8 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_99_datasource_current_pk_day")
     #sys.argv.append("TestMig.test_05_meta")
     #sys.argv.append("TestMig.test_01_mig")
-    sys.argv.append("TestMig.test_02_check")
+    #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    #sys.argv.append("TestMig")
+    sys.argv.append("TestMig")
     unittest.main()
     

@@ -328,11 +328,11 @@ WHERE
                 for key in col_list:
                     val = rowori.get(key)
                     
-                    if col_type_map.get(key) == "INTEGER":
+                    if col_type_map.get(key) == "INTEGER" and val is not None:
                         row.append(long(val))
-                    elif col_type_map.get(key) == "FLOAT":
+                    elif col_type_map.get(key) == "FLOAT" and val is not None:
                         row.append(float(val))
-                    elif col_type_map.get(key) == "TIMESTAMP":
+                    elif col_type_map.get(key) == "TIMESTAMP" and val is not None:
                         row.append(unicode(val).encode("utf-8"))
                     else:
                         if val is None:
