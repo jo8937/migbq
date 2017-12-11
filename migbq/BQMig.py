@@ -262,7 +262,7 @@ class BQMig(object):
     def start_jobid_check_process(self):
         p = MigrationChildProcess(self.conf)
         p.run_check_job_finish()
-        self.update_last_pk()
+        #self.update_last_pk()
         
     def start_jobid_check_and_retry_process(self):
         p = MigrationChildProcess(self.conf)
@@ -531,6 +531,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
         mig.print_remain_days()
     elif cmd == "remainday":
         mig.print_remain_days(tablenames)
+    elif cmd == "updatepk":
+        mig.update_last_pk()
     elif cmd == "progress":
         mig.print_migration_progress() 
     elif cmd == "meta":
