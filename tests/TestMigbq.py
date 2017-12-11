@@ -125,6 +125,9 @@ class TestMig(unittest.TestCase):
                     
     def test_99_datasource_current_pk_day(self):
         commander_executer("datasource_current_pk_day", self.configfile)
+        
+    def test_99_updatepk(self):
+        commander_executer("updatepk", self.configfile)        
             
 class TestMigUtils(unittest.TestCase):
     
@@ -153,6 +156,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_01_mig")
     #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    sys.argv.append("TestMig")
+    #sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_99_updatepk")
     unittest.main()
     

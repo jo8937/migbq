@@ -270,12 +270,14 @@ class BQMig(object):
         p.run_retry_error_job(tablenames=self.tablenames)
         self.update_last_pk()
         
-    def update_last_pk(self):
+    def update_last_pk(self, tablenames=None):
         self.init_migration()
         with self.datasource as ds:
+            if tablenames is None:
+                tablenames = [m.tableName for m in ds.meta.select(ds.meta.tableName)] 
             # update max pk
-            self.log.info("....... CHECK Max PK in Metadata Tables .........")
-            ds.update_last_pk_in_tablenames(self.tablenames)
+            self.log.info("....... CHECK Max PK in Metadata Tables : %s", ",".join(tablenames))
+            ds.update_last_pk_in_tablenames(tablenames)
         
     def retry_error_job(self):
         p = MigrationChildProcess(self.conf)

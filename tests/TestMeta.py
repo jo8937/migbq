@@ -147,7 +147,6 @@ class TestMeta(unittest.TestCase):
             with self.mig as m:
                 print m.meta.select()
         
-    
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
