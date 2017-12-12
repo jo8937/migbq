@@ -77,6 +77,40 @@ def get_config(config_file_path):
     conf.init_config()
     return conf
 
+
+def get_config_sample(conf_in=None, conf_out=None):
+    from MigrationConfig import MigrationConfig
+    
+    defaultconf = {"in":
+                      {
+                      "type": "mssql",
+                      "host": "127.0.0.1",
+                      "user": "test",
+                      "password": "test",
+                      "port": 1433,
+                      "database": "TEST",
+                      "tables": ["persons1"],
+                      "batch_size": 200,
+                      "temp_csv_path": "/tmp/pymig_csv",
+                      "temp_csv_path_complete": "/tmp/pymig_csv_complete"
+                      }
+                      ,
+                      "out": 
+                      {
+                      "type": "bigquery",
+                      "project": "bq",
+                      "dataset": "test"
+                      }
+                  }
+    if conf_in:
+        defaultconf["in"].update(conf_in)
+    if conf_out:
+        defaultconf["out"].update(conf_out)
+        
+    conf = MigrationConfig(confdict = defaultconf)
+    conf.init_config()
+    return conf
+
 def parse_config_file(config_file_path):
     import yaml
 
