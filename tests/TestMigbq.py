@@ -156,7 +156,6 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_01_mig")
     #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    #sys.argv.append("TestMig")
-    sys.argv.append("TestMig.test_99_updatepk")
+    sys.argv.append("TestMig")
     unittest.main()
     

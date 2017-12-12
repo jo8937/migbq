@@ -7,12 +7,25 @@ import os
 
 
 class MigrationConfig(object):
-    def __init__(self, config_file_path):
-        #with open(configfilepath,"rb") as f:
-        #    self.source = yaml.load(f)
+    
+    def __init__(self, config_file_path = None, confdict = None):
+        
+        if config_file_path:
+            self.init_config_from_file(config_file_path)
+        elif confdict:
+            self.init_config_from_dict(confdict) 
+        else:
+            raise ValueError("MigrationConfig() inited from file or dict")
+    
+    def init_config_from_file(self, config_file_path):
         import migutils
+        configdict = migutils.parse_config_file(config_file_path)
+        self.source = configdict
         self.config_file_path = config_file_path
-        self.source = migutils.parse_config_file(config_file_path)
+    
+    def init_config_from_dict(self, configdict):
+        self.source = configdict
+        self.config_file_path = None
         
     def init_config(self):
         conf = self.source
