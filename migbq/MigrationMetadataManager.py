@@ -79,10 +79,11 @@ class MigrationMetadataManager(MigrationRoot):
         if self.parent_meta_db_config is None:
             raise NameError("meta_db_config not found...")
         
+        self.init_peewee()
         
     def __enter__(self):
-        self.log.info("logname : %s",self.logname)
-        self.init_sqlite()
+        self.log.info("connect and init metadata : %s",self.logname)
+        self.init_create_metadata_table()
         self.init_schema()
         return self
 
@@ -90,8 +91,8 @@ class MigrationMetadataManager(MigrationRoot):
         return False
 
 ########################################################################################################################                    
-    # 임시 디비를 저장.
-    def init_sqlite(self):
+        
+    def init_peewee(self):
         self.log.info("Metadata DB Info : %s", self.parent_meta_db_config)
         
         if self.meta_db_type == "mysql":
@@ -174,6 +175,7 @@ class MigrationMetadataManager(MigrationRoot):
             MigrationMetadataLog._meta.db_table = self.metadata_log_tablename
         self.meta_log = MigrationMetadataLog
 
+    def init_create_metadata_table(self):
         try:
             self.DB.create_tables([self.meta, self.meta_log], safe = True)
         except OperationalError as err:
@@ -189,7 +191,7 @@ class MigrationMetadataManager(MigrationRoot):
     def reset_table(self):
         self.log.error("!!!! RESET TABLES !!!!!")
         self.DB.drop_tables([self.meta, self.meta_log], safe=False)
-        self.init_sqlite()
+        self.init_create_metadata_table()
         self.init_schema()
         
     def remove_all_metadata_and_tablenames(self):

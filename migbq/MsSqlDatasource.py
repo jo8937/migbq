@@ -36,6 +36,11 @@ class MsSqlDatasource(MigrationMetadataManager):
         self.log = get_logger("MsSqlSelector_" + data.get("logname",""), config_file_path=data["config"].config_file_path )
         self.log.setLevel(logging.INFO)
         self.db_config = db_config
+        
+        if "host" in self.db_config and "server" not in self.db_config:
+            self.db_config["server"] = self.db_config["host"] 
+            del self.db_config["host"]
+        
         self.select_size = data.get("listsize",10)
         #self.bq_table_map = None
         self.csvpath = data["config"].csvpath
