@@ -362,7 +362,7 @@ SELECT
 FROM 
     %s (nolock) 
 WHERE 
-    %s >= %d   
+    %s > %d   
 """ % ( self.pk_map[tablename] 
         , tablename
         , self.pk_map[tablename]
