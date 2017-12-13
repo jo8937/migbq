@@ -50,7 +50,7 @@ class MigrationMetadataManager(MigrationRoot):
         self.log.setLevel(logging.INFO)
         self.meta_db_type = data.get("meta_db_type","sqlite")
         self.parent_meta_db_config = data.get("meta_db_config")
-        self.select_size = data.get("listsize",10)
+        self.select_size = data.get("listsize")
         self.tablenames = data.get("tablenames",None)
         self.stop_when_no_more_data = data.get("stop_when_no_more_data",False)
         self.stop_when_error = data.get("stop_when_error",False)
@@ -64,6 +64,9 @@ class MigrationMetadataManager(MigrationRoot):
         self.forward_retry_wait = 1
         self.meta_cache = {}
         self.dest_table_field_list_map = {}
+        
+        if self.select_size is None:
+            self.select_size = data["config"].source.get("in",{}).get("batch_size",10000)
         
         metaconf = data["config"].source.get("meta",{}) or {}
         
