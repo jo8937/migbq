@@ -88,17 +88,23 @@ def retry_error_job(migset):
             
         datalist, tablename, pkname, pk_range, col_type_map, log_idx = migset.values()
         # george-gv_game_asset_var_origin-log_id-8125175190-8125275190
-        filename = "migbq-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
-         
-        csvfile = os.path.join(migset.csvfile, filename) 
+
+        if migset.csvfile is None:
+            raise NameError("migset.csvfile is None! %s %s %s %s %s" % (tablename, pkname, pk_range, col_type_map, log_idx))
+        
+        if os.path.isdir(migset.csvfile):
+            filename = "migbq-%s-%s-%s-%s" % (tablename,  pkname, pk_range[0], pk_range[1])
+            csvfile = os.path.join(migset.csvfile, filename)
+        else:
+            csvfile = migset.csvfile
         
         #if os.path.isfile(csvfile) and os.path.exists(csvfile) and validate_gzip_csv_file_linesize(csvfile):
         if os.path.isfile(csvfile) and os.path.exists(csvfile):
-            bq = bigquery.Client(migset.bq_project)
+            bq = bigquery.Client(project=migset.bq_project)
             tbl = bq.dataset(migset.bq_dataset).table(tablename)
             if tbl.exists():
                 tbl.reload()
-                with open(csvfile, 'rb') as fp:        
+                with open(csvfile, 'rb') as fp:
                     #upload_from_file(file_obj, source_format, rewind=False, size=None, num_retries=6, allow_jagged_rows=None, allow_quoted_newlines=None, create_disposition=None, encoding=None, field_delimiter=None, ignore_unknown_values=None, max_bad_records=None, quote_character=None, skip_leading_rows=None, write_disposition=None, client=None)
                     job = tbl.upload_from_file(fp, source_format='CSV',allow_quoted_newlines=True) # allowQuotedNewlines
                 print("## retry_error_job() ## [%s] Start Retry Job : %s " % (log_idx,job.name))

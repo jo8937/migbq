@@ -139,11 +139,14 @@ class TestMssql(unittest.TestCase):
             
             self.assertEqual(remainDay, 5)
             
+    def test_meta(self):
+        print [row.tableName for row in self.datasource.meta.select()]
+             
             
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
-    sys.argv.append("TestMssql.test_remain_day")
+    sys.argv.append("TestMssql.test_meta")
     unittest.main()
     

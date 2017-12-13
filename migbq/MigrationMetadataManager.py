@@ -100,10 +100,14 @@ class MigrationMetadataManager(MigrationRoot):
             self.DB = MySQLDatabase( **self.parent_meta_db_config )
             PKField = MysqlBigIntPrimaryKeyAutoIncrementField(null=False)
         elif self.meta_db_type == "mssql":
-            self.log.info("init MSSQL ... ")
+            self.log.info("init MSSQL ... %s",self.parent_meta_db_config)
             self.parent_meta_db_config["use_legacy_datetime"] = False
             self.DB = MssqlDatabase( **self.parent_meta_db_config )
             PKField = MssqlPrimaryKeyAutoIncrementField(null=False)
+        elif self.meta_db_type == "pgsql":
+            self.log.info("init Postgresql ... %s",self.parent_meta_db_config)
+            self.DB = PostgresqlDatabase( **self.parent_meta_db_config )
+            PKField = PostgresqlBigIntPrimaryKeyAutoIncrementField(null=False)            
         else:
             self.log.info("init SQLITE .... ")
             
@@ -894,13 +898,19 @@ class MigrationMetadataManager(MigrationRoot):
                     if linecount >= self.select_size:
                         from BigQueryJobChecker import retry_error_job
                         self.log.info("start upload %s ...", temp_filename)
-                        jobret = retry_error_job( MigrationSet([], tablename=l.tableName, 
+                        migset = MigrationSet([], tablename=l.tableName, 
                                                                pkname=l.pkName, 
                                                                pk_range=( l.pkLower, l.pkUpper ), 
                                                                col_type_map = self.col_map[tablename], 
                                                                log_idx = l.idx,
                                                                conf = conf
-                                                               ) )
+                                                               )
+                        migset.csvfile = conf.csvpath
+                        migset.csvfile_del_path = conf.csvpath_complete
+                        migset.bq_dataset = conf.datasetname
+                        migset.bq_project = conf.project
+
+                        jobret = retry_error_job( migset )
                         # 파일로 jobid 업로드 성공했다면 jobid 남김.
                         if jobret and jobret.cnt > -1: 
                             self.update_insert_log(job_idx, 0, jobId=jobret.jobId, checkComplete=2)
@@ -924,7 +934,7 @@ class MigrationMetadataManager(MigrationRoot):
                 else:
                     self.log.info(" execute_not_complete() sleep %s and retry... (%s) ...  %s : %s" % (self.retry_cnt, self.retry_cnt, tablename, pk_range))
                     sleep(self.retry_cnt)
-                    return self.execute_left_logs(l.tableName, callback)
+                    return self.execute_left_logs(l.tableName, callback, conf)
             
     def execute_next(self, tablename, callback=None):
         try:
@@ -1225,5 +1235,13 @@ class MysqlBigIntPrimaryKeyAutoIncrementField(BigIntegerField):
         ddl = super(MysqlBigIntPrimaryKeyAutoIncrementField, self).__ddl__(column_type)
         return ddl + [SQL('auto_increment')]
         
+########################################################################################################################
+
+class PostgresqlBigIntPrimaryKeyAutoIncrementField(BigIntegerField):
+    def __init__(self, *args, **kwargs):
+        kwargs['primary_key'] = True
+        super(PostgresqlBigIntPrimaryKeyAutoIncrementField, self).__init__(*args, **kwargs)
+        self.db_field = 'bigserial'
+            
 ########################################################################################################################
 
