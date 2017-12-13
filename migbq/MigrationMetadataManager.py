@@ -109,7 +109,7 @@ class MigrationMetadataManager(MigrationRoot):
             self.DB = PostgresqlDatabase( **self.parent_meta_db_config )
             PKField = PostgresqlBigIntPrimaryKeyAutoIncrementField(null=False)            
         else:
-            self.log.info("init SQLITE .... ")
+            self.log.info("meta data type [%s] not found... init SQLITE .... ",  self.meta_db_type)
             
             sqlite_filename = self.parent_meta_db_config.get("sqlite_filename")
             
