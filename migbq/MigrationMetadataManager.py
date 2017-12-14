@@ -43,28 +43,25 @@ from __builtin__ import False
 
 class MigrationMetadataDatabase(object):
     def __init__(self, meta_db_type, parent_meta_db_config, metadata_tablename = None, metadata_log_tablename = None,  log=None):
-        
-        if log is None:
-            log = logging.getLogger('Metadata')
-        
-        log.info("Metadata DB Info : %s", parent_meta_db_config)
+        self.log = log or logging.getLogger('Metadata')
+        self.log.info("Metadata DB Info : %s", parent_meta_db_config)
         DB = None
         
         if meta_db_type == "mysql":
-            log.info("init MySQL ... ")
+            self.log.info("init MySQL ... ")
             DB = MySQLDatabase( **parent_meta_db_config )
             PKField = MysqlBigIntPrimaryKeyAutoIncrementField(null=False)
         elif meta_db_type == "mssql":
-            log.info("init MSSQL ... %s",parent_meta_db_config)
+            self.log.info("init MSSQL ... %s",parent_meta_db_config)
             parent_meta_db_config["use_legacy_datetime"] = False
             DB = MssqlDatabase( **parent_meta_db_config )
             PKField = MssqlPrimaryKeyAutoIncrementField(null=False)
         elif meta_db_type == "pgsql":
-            log.info("init Postgresql ... %s",parent_meta_db_config)
+            self.log.info("init Postgresql ... %s",parent_meta_db_config)
             DB = PostgresqlDatabase( **parent_meta_db_config )
             PKField = PostgresqlBigIntPrimaryKeyAutoIncrementField(null=False)            
         else:
-            log.info("meta data type [%s] not found... init SQLITE .... ",  meta_db_type)
+            self.log.info("meta data type [%s] not found... init SQLITE .... ",  meta_db_type)
             
             sqlite_filename = parent_meta_db_config.get("sqlite_filename")
             
@@ -75,10 +72,9 @@ class MigrationMetadataDatabase(object):
                 raise ValueError("SQLITE File not found ... sql lite 디비파일을 지정해야합니다")
 
             currentpath = os.path.join( os.path.dirname(os.path.realpath(__file__)), "log" )
-            
             sqlite_file = os.path.join(currentpath, sqlite_filename)
             
-            log.info("SQLITE File : %s", sqlite_file)
+            self.log.info("SQLITE File : %s", sqlite_file)
             
             DB = SqliteDatabase(sqlite_file, autocommit=True)
             PKField = PrimaryKeyAutoIncrementField(null=False)
@@ -136,6 +132,18 @@ class MigrationMetadataDatabase(object):
         self.DB = DB
         self.meta = MigrationMetadata
         self.meta_log = MigrationMetadataLog
+        
+    def check_and_create_table(self):
+        try:
+            if not self.meta.table_exists() or not self.meta_log.table_exists():
+                self.DB.create_tables([self.meta, self.meta_log], safe = True)
+        except OperationalError as err:
+            # if table exists... run, else exit
+            if self.meta.table_exists() and self.meta_log.table_exists():
+                self.log.error("Table Already Exists")
+            else:
+                self.log.error("## Table Not Exists !! But Create Error Also!!!??")
+                raise err
         
 
 class MigrationMetadataManager(MigrationRoot):
