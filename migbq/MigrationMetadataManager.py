@@ -41,6 +41,103 @@ from __builtin__ import False
 # https://wiki.python.org/moin/HigherLevelDatabaseProgramming
 # MsSQL / MySQL 에서 테이블을 읽어서 어디론가 보내기 위한...
 
+class MigrationMetadataDatabase(object):
+    def __init__(self, meta_db_type, parent_meta_db_config, metadata_tablename = None, metadata_log_tablename = None,  log=None):
+        
+        if log is None:
+            log = logging.getLogger('Metadata')
+        
+        log.info("Metadata DB Info : %s", parent_meta_db_config)
+        DB = None
+        
+        if meta_db_type == "mysql":
+            log.info("init MySQL ... ")
+            DB = MySQLDatabase( **parent_meta_db_config )
+            PKField = MysqlBigIntPrimaryKeyAutoIncrementField(null=False)
+        elif meta_db_type == "mssql":
+            log.info("init MSSQL ... %s",parent_meta_db_config)
+            parent_meta_db_config["use_legacy_datetime"] = False
+            DB = MssqlDatabase( **parent_meta_db_config )
+            PKField = MssqlPrimaryKeyAutoIncrementField(null=False)
+        elif meta_db_type == "pgsql":
+            log.info("init Postgresql ... %s",parent_meta_db_config)
+            DB = PostgresqlDatabase( **parent_meta_db_config )
+            PKField = PostgresqlBigIntPrimaryKeyAutoIncrementField(null=False)            
+        else:
+            log.info("meta data type [%s] not found... init SQLITE .... ",  meta_db_type)
+            
+            sqlite_filename = parent_meta_db_config.get("sqlite_filename")
+            
+            if sqlite_filename is None:
+                sqlite_filename = parent_meta_db_config.get("database")
+                    
+            if sqlite_filename is None:
+                raise ValueError("SQLITE File not found ... sql lite 디비파일을 지정해야합니다")
+
+            currentpath = os.path.join( os.path.dirname(os.path.realpath(__file__)), "log" )
+            
+            sqlite_file = os.path.join(currentpath, sqlite_filename)
+            
+            log.info("SQLITE File : %s", sqlite_file)
+            
+            DB = SqliteDatabase(sqlite_file, autocommit=True)
+            PKField = PrimaryKeyAutoIncrementField(null=False)
+            
+        logger = logging.getLogger('peewee')
+        logger.setLevel(logging.DEBUG)
+        #logger.setLevel(logging.INFO)
+        
+        class MigrationMetadata(Model):
+            tableName = CharField(primary_key=True)
+            firstPk = BigIntegerField(null=True)
+            lastPk = BigIntegerField(null=True)
+            currentPk = BigIntegerField(null=True)
+            regDate = DateTimeField(default=datetime.datetime.now)
+            modDate = DateTimeField(default=datetime.datetime.now)
+            endDate = DateTimeField(null=True)
+            pkName = CharField(null=True)
+            rowCnt = BigIntegerField(null=True)
+            pageTokenCurrent = CharField(null=True)
+            pageTokenNext = CharField(null=True)
+            class Meta:
+                database = DB
+                
+        if metadata_tablename:
+            MigrationMetadata._meta.db_table = metadata_tablename
+        
+        """
+        CREATE INDEX idx_tblname ON migrationmetadatalog (tableName); 
+        CREATE INDEX idx_jobid ON migrationmetadatalog (jobId); 
+        CREATE INDEX idx_checkComplete ON migrationmetadatalog (checkComplete); 
+        CREATE INDEX idx_jobComplete ON migrationmetadatalog (jobComplete); 
+        """
+        class MigrationMetadataLog(Model):
+            idx = PKField
+            tableName = CharField(null=False, index = True)
+            regDate = DateTimeField(default=datetime.datetime.now)
+            endDate = DateTimeField(null=True)
+            pkName = CharField(null=True)
+            cnt = BigIntegerField(null=True)
+            pkUpper = BigIntegerField(null=True)
+            pkLower = BigIntegerField(null=True)
+            pkCurrent = BigIntegerField(null=True)
+            jobId = CharField(null=True, index = True)
+            errorMessage = CharField(null=True, max_length=4000)
+            checkComplete = SmallIntegerField(null=False, default=0, index = True)
+            jobComplete = SmallIntegerField(null=False, default=0, index = True)
+            pageToken = CharField(null=True)
+            class Meta:
+                database = DB
+        #MigrationMetadataLog._meta.auto_increment = True
+        #self.DB.register_fields({'primary_key': 'BIGINT IDENTITY'})
+        if metadata_log_tablename:
+            MigrationMetadataLog._meta.db_table = metadata_log_tablename
+            
+        self.DB = DB
+        self.meta = MigrationMetadata
+        self.meta_log = MigrationMetadataLog
+        
+
 class MigrationMetadataManager(MigrationRoot):
     def __init__(self, **data):
         pname = multiprocessing.current_process().name
@@ -94,94 +191,17 @@ class MigrationMetadataManager(MigrationRoot):
         return False
 
 ########################################################################################################################                    
-        
     def init_peewee(self):
-        self.log.info("Metadata DB Info : %s", self.parent_meta_db_config)
+        metadatabase = MigrationMetadataDatabase(self.meta_db_type, 
+                                                 self.parent_meta_db_config, 
+                                                 self.metadata_tablename, 
+                                                 self.metadata_log_tablename,
+                                                 self.log)
+        self.DB = metadatabase.DB
+        self.meta = metadatabase.meta
+        self.meta_log = metadatabase.meta_log 
+        #self.add_columns()
         
-        if self.meta_db_type == "mysql":
-            self.log.info("init MySQL ... ")
-            self.DB = MySQLDatabase( **self.parent_meta_db_config )
-            PKField = MysqlBigIntPrimaryKeyAutoIncrementField(null=False)
-        elif self.meta_db_type == "mssql":
-            self.log.info("init MSSQL ... %s",self.parent_meta_db_config)
-            self.parent_meta_db_config["use_legacy_datetime"] = False
-            self.DB = MssqlDatabase( **self.parent_meta_db_config )
-            PKField = MssqlPrimaryKeyAutoIncrementField(null=False)
-        elif self.meta_db_type == "pgsql":
-            self.log.info("init Postgresql ... %s",self.parent_meta_db_config)
-            self.DB = PostgresqlDatabase( **self.parent_meta_db_config )
-            PKField = PostgresqlBigIntPrimaryKeyAutoIncrementField(null=False)            
-        else:
-            self.log.info("meta data type [%s] not found... init SQLITE .... ",  self.meta_db_type)
-            
-            sqlite_filename = self.parent_meta_db_config.get("sqlite_filename")
-            
-            if sqlite_filename is None:
-                sqlite_filename = self.parent_meta_db_config.get("database")
-                    
-            if sqlite_filename is None:
-                raise ValueError("SQLITE File not found ... sql lite 디비파일을 지정해야합니다")
-
-            currentpath = os.path.join( os.path.dirname(os.path.realpath(__file__)), "log" )
-            
-            self.sqlite_file = os.path.join(currentpath, sqlite_filename)
-            
-            self.log.info("SQLITE File : %s", self.sqlite_file)
-            
-            self.DB = SqliteDatabase(self.sqlite_file, autocommit=True)
-            PKField = PrimaryKeyAutoIncrementField(null=False)
-            
-        logger = logging.getLogger('peewee')
-        logger.setLevel(logging.DEBUG)
-        #logger.setLevel(logging.INFO)
-
-        class MigrationMetadata(Model):
-            tableName = CharField(primary_key=True)
-            firstPk = BigIntegerField(null=True)
-            lastPk = BigIntegerField(null=True)
-            currentPk = BigIntegerField(null=True)
-            regDate = DateTimeField(default=datetime.datetime.now)
-            modDate = DateTimeField(default=datetime.datetime.now)
-            endDate = DateTimeField(null=True)
-            pkName = CharField(null=True)
-            rowCnt = BigIntegerField(null=True)
-            pageTokenCurrent = CharField(null=True)
-            pageTokenNext = CharField(null=True)
-            class Meta:
-                database = self.DB
-                
-        if self.metadata_tablename:
-            MigrationMetadata._meta.db_table = self.metadata_tablename
-        self.meta = MigrationMetadata
-        """
-        CREATE INDEX idx_tblname ON migrationmetadatalog (tableName); 
-        CREATE INDEX idx_jobid ON migrationmetadatalog (jobId); 
-        CREATE INDEX idx_checkComplete ON migrationmetadatalog (checkComplete); 
-        CREATE INDEX idx_jobComplete ON migrationmetadatalog (jobComplete); 
-        """
-        class MigrationMetadataLog(Model):
-            idx = PKField
-            tableName = CharField(null=False, index = True)
-            regDate = DateTimeField(default=datetime.datetime.now)
-            endDate = DateTimeField(null=True)
-            pkName = CharField(null=True)
-            cnt = BigIntegerField(null=True)
-            pkUpper = BigIntegerField(null=True)
-            pkLower = BigIntegerField(null=True)
-            pkCurrent = BigIntegerField(null=True)
-            jobId = CharField(null=True, index = True)
-            errorMessage = CharField(null=True, max_length=4000)
-            checkComplete = SmallIntegerField(null=False, default=0, index = True)
-            jobComplete = SmallIntegerField(null=False, default=0, index = True)
-            pageToken = CharField(null=True)
-            class Meta:
-                database = self.DB
-        #MigrationMetadataLog._meta.auto_increment = True
-        #self.DB.register_fields({'primary_key': 'BIGINT IDENTITY'})
-        if self.metadata_log_tablename:
-            MigrationMetadataLog._meta.db_table = self.metadata_log_tablename
-        self.meta_log = MigrationMetadataLog
-
     def init_create_metadata_table(self):
         try:
             self.DB.create_tables([self.meta, self.meta_log], safe = True)
@@ -194,7 +214,7 @@ class MigrationMetadataManager(MigrationRoot):
                 raise err
             
         #self.add_columns()
-    
+            
     def reset_table(self):
         self.log.error("!!!! RESET TABLES !!!!!")
         self.DB.drop_tables([self.meta, self.meta_log], safe=False)

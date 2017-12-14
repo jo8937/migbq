@@ -60,7 +60,7 @@ class TestMeta(unittest.TestCase):
             cnt = mig.update_last_pk_in_meta()
 
     def test_validate(self):
-        from Forwarder import Forwarder  
+        from migbq.Forwarder import Forwarder  
         f = Forwarder()
         with self.mig as mig:
             mig.log.setLevel(logging.DEBUG)
@@ -95,7 +95,7 @@ class TestMeta(unittest.TestCase):
             mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 30,pkLower = 20,pkCurrent = 20)._execute()
             mig.meta_log.insert(tableName = "persons7", pkName = "id",pkUpper = 40,pkLower = 30,pkCurrent = 30)._execute()
             
-            self.assertIsNone(mig.select_incomplete_range_groupby("persons6"))
+            self.assertIsNot(mig.select_incomplete_range_groupby("persons6"))
             l = mig.select_incomplete_range_groupby("persons7")
             print l
             self.assertEqual(len(l), 3)
@@ -152,6 +152,8 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
     #sys.argv.append("TestMeta.test_incomplete_log")
+    sys.argv.append("TestMeta.test_incomplete_log_range")
     sys.argv.append("TestMeta.test_remain_day")
+    sys.argv.append("TestMeta.test_custom_meta")
     unittest.main()
     
