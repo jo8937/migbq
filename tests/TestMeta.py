@@ -14,7 +14,7 @@ from migbq.MigrationSet import *
 import logging
 from os import getenv
 from migbq.BigQueryJobChecker import *
-from migbq.BQMig import commander, commander_executer
+from migbq.BQMig import commander, commander_executer, BQMig
 from datetime import datetime
 
 class Struct:
@@ -146,14 +146,27 @@ class TestMeta(unittest.TestCase):
             self.mig.log.info("metadata connection not in config file. process to standard meta")
             with self.mig as m:
                 print m.meta.select()
+
+    def test_sync(self):
+        datasource = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                     meta_db_type = "mssql",
+                                     meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                     config = migbq.migutils.get_config(getenv("pymig_config_path"))
+                                     )  
+        bq = BigQueryForwarder(dataset = get_config(getenv("pymig_config_path")).source["out"]["dataset"] , prefix="", config = get_config( getenv("pymig_config_path")  ))
+        datasource.log.setLevel(logging.DEBUG)
+        bq.log.setLevel(logging.DEBUG)
+        commander(["sync_range",getenv("pymig_config_path"),"--tablenames","persons9","--syncrange","0,10"])
+        
         
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
     #sys.argv.append("TestMeta.test_incomplete_log")
-    sys.argv.append("TestMeta.test_incomplete_log_range")
-    sys.argv.append("TestMeta.test_remain_day")
-    sys.argv.append("TestMeta.test_custom_meta")
+#     sys.argv.append("TestMeta.test_incomplete_log_range")
+#     sys.argv.append("TestMeta.test_remain_day")
+#     sys.argv.append("TestMeta.test_custom_meta")
+    sys.argv.append("TestMeta.test_sync")
     unittest.main()
     

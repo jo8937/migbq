@@ -393,11 +393,11 @@ order by dt desc
             for row in mig.meta.select():
                 print "%s,%s,%s" % (row.tableName, row.currentPk, row.lastPk)
                 
-    def syncdata(self,tablename):
+    def syncdata(self,tablename,pk_range=None):
         self.init_migration()
         with self.datasource as ds:
             with self.tdforward as f:
-                ds.validate_pk_sync(tablename, f)
+                ds.validate_pk_sync(tablename, f, pk_range)
                         
     def diff_approximate(self):
         return self.diff("count_all")
@@ -461,11 +461,12 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
     parser.add_argument("--lockname", help="custom lockname name", required=False)
+    parser.add_argument("--syncrange", help="seek pk range. ex) 0,10", required=False)
     arg = parser.parse_args(args = array_command)
 
     cmd = arg.cmd
@@ -487,7 +488,7 @@ def commander(array_command=None):
         custom_config_dict["out"]["dataset"] = arg.dataset
     
     if os.name == "nt":
-        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict)
+        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict, arg)
     else:
         # for crontab prevent duplicate process
         import fcntl
@@ -503,7 +504,7 @@ def commander(array_command=None):
             print err
             return None
         
-        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict)
+        commander_executer(cmd, arg.config_file, arg.lockname, custom_config_dict, arg)
         fcntl.flock(x, fcntl.LOCK_UN)
         
 def get_config_file_base_name(config_path):
@@ -512,7 +513,7 @@ def get_config_file_base_name(config_path):
         config_file_base_name = os.path.splitext(config_file_base_name)[0]
     return config_file_base_name
 
-def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None):
+def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None, arg=None):
               
     mig = BQMig(config_file, 
                 custom_config_dict = custom_config_dict if custom_config_dict and len(custom_config_dict) > 0 else None, 
@@ -541,6 +542,9 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None)
         mig.print_metadata()
     elif cmd == "sync":
         mig.syncdata(tablenames[0])
+    elif cmd == "sync_range":
+        r = arg.syncrange.split(",")
+        mig.syncdata(tablenames[0], (int(r[0]),int(r[1]),-1))
     elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()
