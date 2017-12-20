@@ -200,7 +200,8 @@ class BigQueryForwarder(Forwarder):
 
         if migset.csvfile is None:
             if len(datalist) > 0:
-                migset.csvfile = self.save_csv_data(migset.tablename, datalist, tablename, pkname, pk_range, col_type_map)
+                tbl = self.bq.dataset(self.dataset_name).table(migset.tablename)
+                migset.csvfile = self.save_csv_data(tbl, datalist, tablename, pkname, pk_range, col_type_map)
                 if migset.csvfile is None:
                     self.log.error("csvfile create fail. no data. %s" % migset.jobId)
                     return 0
