@@ -53,7 +53,7 @@ class MigrationMetadataDatabase(object):
             PKField = MysqlBigIntPrimaryKeyAutoIncrementField(null=False)
         elif meta_db_type == "mssql":
             self.log.info("init MSSQL ... %s",parent_meta_db_config)
-            parent_meta_db_config["use_legacy_datetime"] = False
+            #parent_meta_db_config["use_legacy_datetime"] = False
             DB = MssqlDatabase( **parent_meta_db_config )
             PKField = MssqlPrimaryKeyAutoIncrementField(null=False)
         elif meta_db_type == "pgsql":
