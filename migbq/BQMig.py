@@ -472,6 +472,15 @@ def commander(array_command=None):
     cmd = arg.cmd
     config_file = arg.config_file
     
+    if not os.path.exists(config_file):
+        print "not exists %s ... try cwd ..." % config_file 
+        config_file = os.path.join( os.getcwd(), config_file )
+        if not os.path.exists(config_file):
+            print "not exists %s ... try file directroy ..." % config_file
+            config_file = os.path.join( os.path.dirname(os.path.realpath(__file__)), config_file )
+            if not os.path.exists(config_file):
+                raise ValueError("File path [%s] not exists" % config_file)
+    
     migconf = get_config(config_file)
     
     custom_config_dict = {}
