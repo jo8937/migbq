@@ -554,7 +554,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
         mig.run_migration()
     elif cmd == "some":
         if len(tablenames) > 0:
-            mig.run_migration_some_pk(mig.conf.source["in"]["pk_lower"], mig.conf.source["in"]["pk_upper"])
+            for table in tablenames: 
+                mig.run_migration_some_pk(table, [mig.conf.source["in"]["pk_lower"], mig.conf.source["in"]["pk_upper"]])
         else:
             print "select table like ... [BQMig.py mig DBNAME tablename1 1 10 13] ... "
     elif cmd == "approximate":
