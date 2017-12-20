@@ -698,7 +698,7 @@ class MigrationMetadataManager(MigrationRoot):
                 diffset = set(src_pk_list).symmetric_difference(set(dest_pk_list))
                 
                 self.log.info("### Difference In %s Set Count %s", pk_range, len(diffset))
-                self.log.info("### Difference Set %s", diffset)
+                self.log.info("### Difference Set %s ~ %s", min(diffset), max(diffset))
                 
                 unsync_pk_list.extend( list(diffset) )
             else:
