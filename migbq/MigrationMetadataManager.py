@@ -626,7 +626,7 @@ class MigrationMetadataManager(MigrationRoot):
         if len(unsync_pk_list) > 1000000:
             self.log.error("! Unsync Data Count is Too Many. We Recommand Restart Migration...")
         elif len(unsync_pk_list) > 0:
-            self.log.info("! Start Migration Unsync Data .... %s",unsync_pk_list)
+            self.log.info("! Start Migration Unsync Data .... %s ~ %s", min(unsync_pk_list),max(unsync_pk_list))
             log_idx = self.insert_log(tablename, pk_range)
             datalist = self.select_datalist_in_use_hashlist(tablename, unsync_pk_list)
             sendrowcnt = forwarder.execute(
