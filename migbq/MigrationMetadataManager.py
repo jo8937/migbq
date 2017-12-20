@@ -558,12 +558,12 @@ class MigrationMetadataManager(MigrationRoot):
         
         changed = False
         
-        # choose all smaller
-        if pk_min < pk_range_forward[0]: 
+        # choose all smaller count, larger range...
+        if pk_min > pk_range_forward[0]: 
             pk_min = pk_range_forward[0]
             changed = True
               
-        if pk_max > pk_range_forward[1]: 
+        if pk_max < pk_range_forward[1]: 
             pk_max = pk_range_forward[1]
             changed = True
             
