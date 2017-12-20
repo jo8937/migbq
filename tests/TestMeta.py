@@ -178,6 +178,6 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMeta.test_incomplete_log_range")
 #     sys.argv.append("TestMeta.test_remain_day")
 #     sys.argv.append("TestMeta.test_custom_meta")
-    sys.argv.append("TestMeta.test_run_range")
+    sys.argv.append("TestMeta.test_sync")
     unittest.main()
     

@@ -559,11 +559,11 @@ class MigrationMetadataManager(MigrationRoot):
         changed = False
         
         # choose all smaller count, larger range...
-        if pk_min > pk_range_forward[0]: 
+        if pk_min < pk_range_forward[0]: 
             pk_min = pk_range_forward[0]
             changed = True
               
-        if pk_max < pk_range_forward[1]: 
+        if pk_max > pk_range_forward[1]: 
             pk_max = pk_range_forward[1]
             changed = True
             
@@ -598,16 +598,18 @@ class MigrationMetadataManager(MigrationRoot):
             return []
 
         self.log.info("# get min, max, count ... for Forward ")
-        pk_range_forward = forwarder.retrive_pk_range_in_table(tablename, pk_name) # bigquery count
-        
+        #pk_range_forward = forwarder.retrive_pk_range_in_table(tablename, pk_name) # bigquery count
+        forward_cnt = forwarder.count_range(tablename, pk_range, pk_name)
+        pk_range_forward = (pk_range[0],pk_range[1],forward_cnt)
+
         # 1차적으로 카운트가 같은지 봄. 같다면 더 할거 없음..
-        if pk_range_forward[2] == pk_range[2]:
+        if forward_cnt == pk_range[2]:
             self.log.info("### [OK] Table [%s] 의 row count 가 일치합니다! sync 를 진행할 필요가 없습니다.", tablename)
             return []
         else:
             self.log.info("### Table [%s] 의 row count 가 다르므로 sync 를 진행합니다 ", tablename)
             self.log.info("### Datasource : %s ###", pk_range[2])
-            self.log.info("### Target     : %s ###", pk_range_forward[2])
+            self.log.info("### Target     : %s ###", forward_cnt)
         
         self.log.info("# Datasource - Forward 's PK Range normalize ... to same min value ")
         pk_range = self.intersect_pk_range(pk_range, tablename, pk_range_forward, pk_name) ## API Call
