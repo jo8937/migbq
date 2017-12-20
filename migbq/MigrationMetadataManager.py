@@ -558,15 +558,16 @@ class MigrationMetadataManager(MigrationRoot):
         
         changed = False
         
-        if pk_min < pk_range_forward[0]:
+        # choose all smaller
+        if pk_min < pk_range_forward[0]: 
             pk_min = pk_range_forward[0]
             changed = True
               
-        if pk_max > pk_range_forward[1]:
+        if pk_max > pk_range_forward[1]: 
             pk_max = pk_range_forward[1]
             changed = True
             
-        if pk_cnt < pk_range_forward[2]:
+        if pk_cnt > pk_range_forward[2]:
             pk_cnt = pk_range_forward[2]
             changed = True
         
@@ -647,7 +648,7 @@ class MigrationMetadataManager(MigrationRoot):
         MAX_RETRY_VALID_CNT = 3
         unsync_pk_list = []
 
-        if depth == 1:
+        if depth == 1 and pk_range[2] > 0:
             datasource_cnt = long( self.count_all(tablename) )
             target_cnt = forwarder.retrive_pk_range_in_table(tablename, pk_name)[2]
             self.log.info("count all is approximate value. check all count")
