@@ -200,14 +200,15 @@ class BigQueryForwarder(Forwarder):
 
         if migset.csvfile is None:
             if len(datalist) > 0:
-                self.log.error("migset.csvfile is None and datalist exists ... process execute_streaming_api")
-                return self.execute_streaming_api(datalist, tablename, pkname, pk_range, col_type_map)
-                #tbl = self.bq.dataset(self.dataset_name).table(migset.tablename)
-                #migset.csvfile = self.save_csv_data(tbl, datalist, tablename, pkname, pk_range, col_type_map)
-                #if migset.csvfile is None:
-                #    self.log.error("csvfile create fail. no data. %s" % migset.jobId)
-                #    return 0
-                #self.log.info("Lazy Memory dump to CSV. Start Insert BigQuery [%s], Upload File : %s ..." % (migset.tablename, migset.csvfile)) 
+                #self.log.error("migset.csvfile is None and datalist exists ... process execute_streaming_api")
+                #return self.execute_streaming_api(datalist, tablename, pkname, pk_range, col_type_map)
+                tbl = self.bq.dataset(self.dataset_name).table(migset.tablename)
+                tbl.reload()
+                migset.csvfile = self.save_csv_data(tbl, datalist, tablename, pkname, pk_range, col_type_map)
+                if migset.csvfile is None:
+                    self.log.error("csvfile create fail. no data. %s" % migset.jobId)
+                    return 0
+                self.log.info("Lazy Memory dump to CSV. Start Insert BigQuery [%s], Upload File : %s ..." % (migset.tablename, migset.csvfile)) 
             else:
                 self.log.error("Hmm... No rows present in the request To BigQuery. return 0")
                 migset.jobId = ""
