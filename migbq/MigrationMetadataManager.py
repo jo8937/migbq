@@ -665,17 +665,18 @@ class MigrationMetadataManager(MigrationRoot):
         else:
             self.log.info("!! [%s] !! Count NOT Equals __ %s <> %s __ range : %s",depth, datasource_cnt, target_cnt, pk_range)
             # 한쪽이 0 이면... 모든 PK 를 채워넣음
-            if datasource_cnt == 0:
-                self.log.info("## [%s]: src cnt %s ... dest cnt %s ... in Range %s  ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
-                src_pk_list = self.select_pk_value_list(tablename, pk_range, pk_name)
-                unsync_pk_list.extend( src_pk_list )
-                return unsync_pk_list
-            
-            if target_cnt == 0:
-                self.log.info("## [%s]: src cnt %s ... dest cnt %s ...  in Range %s ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
-                dest_pk_list = forwarder.select_pk_value_list(tablename, pk_range, pk_name)
-                unsync_pk_list.extend( dest_pk_list )
-                return unsync_pk_list
+            if depth > 1:
+                if datasource_cnt == 0:
+                    self.log.info("## [%s]: src cnt %s ... dest cnt %s ... in Range %s  ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
+                    src_pk_list = self.select_pk_value_list(tablename, pk_range, pk_name)
+                    unsync_pk_list.extend( src_pk_list )
+                    return unsync_pk_list
+                
+                if target_cnt == 0:
+                    self.log.info("## [%s]: src cnt %s ... dest cnt %s ...  in Range %s ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
+                    dest_pk_list = forwarder.select_pk_value_list(tablename, pk_range, pk_name)
+                    unsync_pk_list.extend( dest_pk_list )
+                    return unsync_pk_list
             
             # 한쪽이 음수면 에러라서 재시도..
             if datasource_cnt < 0 or target_cnt < 0:
