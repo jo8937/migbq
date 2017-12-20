@@ -237,7 +237,17 @@ class BQMig(object):
         self.init_migration();
         self.start_migration();
         
-    
+    def run_migration_range(self,tablename, pk_range_list):
+        self.init_migration();
+        with self.datasource as ds:
+            with self.tdforward as td:
+                for pk_range in pk_range_list:
+                    self.log.info("start range... %s - %s", tablename, pk_range)
+                    ds.sync_field_list_src_and_dest(td)
+                    job_idx = ds.insert_log(tablename, pk_range)
+                    sendrowcnt, next_range, datacnt = ds.execute_range(tablename, pk_range, td.execute_async, job_idx)
+                    self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)
+        
     def reset_for_debug(self):
         self.init_migration();
         if os.name == "nt":
@@ -461,12 +471,12 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
     parser.add_argument("--lockname", help="custom lockname name", required=False)
-    parser.add_argument("--syncrange", help="seek pk range. ex) 0,10", required=False)
+    parser.add_argument("--range", help="seek pk range. ex) 0,10", required=False)
     arg = parser.parse_args(args = array_command)
 
     cmd = arg.cmd
@@ -552,13 +562,20 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
     elif cmd == "sync":
         mig.syncdata(tablenames[0])
     elif cmd == "sync_range":
-        r = arg.syncrange.split(",")
+        r = arg.range.split(",")
         mig.syncdata(tablenames[0], (int(r[0]),int(r[1]),-1))
     elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()
         else:
             print "select table like ... [BQMig.py mig DBNAME tablename1 tablename2] ... "
+    elif cmd == "run_range":
+        range_list = []
+        rgroup = arg.range.split("+")
+        for rg in rgroup:
+            r = rg.split(",")
+            range_list.append((int(r[0]),int(r[1]),-1))
+        mig.run_migration_range(tablenames[0], range_list)            
     elif cmd == "run_with_no_retry":
         mig.run_migration()
     elif cmd == "some":
