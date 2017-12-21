@@ -204,6 +204,7 @@ class BigQueryForwarder(Forwarder):
                 #return self.execute_streaming_api(datalist, tablename, pkname, pk_range, col_type_map)
                 tbl = self.bq.dataset(self.dataset_name).table(migset.tablename)
                 tbl.reload()
+                migset.cnt = len(datalist)
                 migset.csvfile = self.save_csv_data(tbl, datalist, tablename, pkname, pk_range, col_type_map)
                 if migset.csvfile is None:
                     self.log.error("csvfile create fail. no data. %s" % migset.jobId)
