@@ -321,28 +321,17 @@ WHERE
 
         self.log.debug("SQL : %s", query)
         query = self.bq.run_sync_query(query)
-        query.timeout_ms = 100000
+        query.timeout_ms = 120000
         query.max_results = self.SELECT_LIMIT
         query.run()
         
         pklist = []
-        trycnt = 1
         if query.complete:
-            rows = query.rows
-            token = query.page_token
-            
-            while True:
-                for row in rows:
-                    pklist.append(row[0])
-                    
-                if token is None:
-                    self.log.debug("fetch finish ")
-                    break
-                
-                #self.log.debug("[%s] start fetch next %s ... ", trycnt, token)
-                rows, total_count, token = query.fetch_data(page_token=token)       # API request
-                #self.log.debug("[%s] fetch result : total_count : %s", trycnt, total_count)
-                trycnt = trycnt + 1
+            total_count = query.total_rows
+            self.log.debug("SQL result count : %s", total_count)
+            rows = query.fetch_data()
+            for row in rows:
+                pklist.append(row[0])
                 
             return pklist
         else:
