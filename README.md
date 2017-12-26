@@ -136,7 +136,7 @@ bqmig sync config.yml
   - select with pk min and min + batch_size
   
 ```sql
-	select * from tbl where idx => 1 and idx < 100;
+	select * from tbl where 0 < idx and idx <= 100;
 ```
 
   - create file **pymig-tbl-idx-1-100** 
@@ -151,10 +151,10 @@ For example, batch_size : 100, max pk is 321, then rdbms query execute like belo
 
 ```sql
 
-select * from tbl where idx => 1 and idx < 100;
-select * from tbl where idx => 100 and idx < 200;
-select * from tbl where idx => 200 and idx < 300;
-select * from tbl where idx => 300 and idx < 400;
+select * from tbl where 0 < idx and idx <= 100;
+select * from tbl where 100 < idx and idx <= 200;
+select * from tbl where 200 < idx and idx <= 300;
+select * from tbl where 300 < idx and idx <= 400;
 
 -- end 
 

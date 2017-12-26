@@ -130,7 +130,7 @@ pymig sync config.yml
   - 해당 PK 를 조건에 넣고 0부터 batch_size 만큼  select 하고, 그 결과를 csv 에 저장.
   
 ```sql
-	select * from tbl where idx => 1 and idx < 100;
+	select * from tbl where 0 < idx and idx <= 100;
 ```
 
   - 이것을 pymig-tbl-idx-1-100 이라는 임시 압축된 csv 파일을 만들어서 임시 저장 (경로는 설정파일에)  
@@ -146,10 +146,10 @@ pymig sync config.yml
 
 ```sql
 
-select * from tbl where idx => 1 and idx < 100;
-select * from tbl where idx => 100 and idx < 200;
-select * from tbl where idx => 200 and idx < 300;
-select * from tbl where idx => 300 and idx < 400;
+select * from tbl where 0 < idx and idx <= 100;
+select * from tbl where 100 < idx and idx <= 200;
+select * from tbl where 200 < idx and idx <= 300;
+select * from tbl where 300 < idx and idx <= 400;
 
 -- end 
 

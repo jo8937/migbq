@@ -238,6 +238,7 @@ class BQMig(object):
         self.start_migration();
         
     def run_migration_range(self,tablename, pk_range_list):
+        allcnt = 0
         self.init_migration();
         with self.datasource as ds:
             with self.tdforward as td:
@@ -247,6 +248,9 @@ class BQMig(object):
                     job_idx = ds.insert_log(tablename, pk_range)
                     sendrowcnt, next_range, datacnt = ds.execute_range(tablename, pk_range, td.execute_async, job_idx)
                     self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)
+                    allcnt += datacnt
+        
+        return allcnt
         
     def reset_for_debug(self):
         self.init_migration();
