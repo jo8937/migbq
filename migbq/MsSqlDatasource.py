@@ -229,7 +229,6 @@ WHERE
                 minval = val
             preval = val
                 
-        print range_list
         return range_list
             
     def generate_where_query_in(self, pkname, pk_range):

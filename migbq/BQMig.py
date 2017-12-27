@@ -242,9 +242,9 @@ class BQMig(object):
         self.init_migration();
         with self.datasource as ds:
             with self.tdforward as td:
+                ds.sync_field_list_src_and_dest(td)
                 for pk_range in pk_range_list:
                     self.log.info("start range... %s - %s", tablename, pk_range)
-                    ds.sync_field_list_src_and_dest(td)
                     job_idx = ds.insert_log(tablename, pk_range)
                     sendrowcnt, next_range, datacnt = ds.execute_range(tablename, pk_range, td.execute_async, job_idx)
                     self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)

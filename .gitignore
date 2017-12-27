@@ -31,3 +31,4 @@ pip-log.txt
 .pypirc
 build.bat
 testdocs.txt
+/testlocals/

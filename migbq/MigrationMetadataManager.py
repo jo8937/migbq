@@ -724,6 +724,22 @@ class MigrationMetadataManager(MigrationRoot):
 
         return unsync_pk_list
             
+    def zip_array_to_range_list(self,pk_range):
+        pk_range = list(pk_range)
+        pk_range.append(max(pk_range) + 1)
+        
+        minval = pk_range[0]
+        preval = pk_range[0] - 1
+        range_list = []
+        cnt = len(pk_range)
+        for index, val in enumerate(sorted(pk_range)):
+            if val != preval + 1 or index + 1 == cnt:
+                range_list.append((minval,pk_range[index-1]))
+                minval = val
+            preval = val
+                
+        return range_list
+                
     ######################################################################################################
     
     def update_last_pk_in_meta(self):
