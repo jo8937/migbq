@@ -95,6 +95,14 @@ class MigrationMetadataDatabase(object):
             rowCnt = BigIntegerField(null=True)
             pageTokenCurrent = CharField(null=True)
             pageTokenNext = CharField(null=True)
+            rowCntDest = BigIntegerField(null=True)
+            dbname = CharField(null=True)
+            dataset = CharField(null=True)
+            tag1 = CharField(null=True)
+            tag2 = CharField(null=True)
+            tag3 = CharField(null=True)
+            cntDate = DateTimeField(null=True)
+            tagint  = BigIntegerField(null=True)
             class Meta:
                 database = DB
                 
