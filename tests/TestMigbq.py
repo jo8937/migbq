@@ -109,6 +109,9 @@ class TestMig(unittest.TestCase):
     def test_05_meta(self):
         commander(["remaindayall", self.configfile])
 
+    def test_11_mig_range_queue(self):
+        commander(["run_range_queued", self.configfile,"--range","0,234","--range_batch_size","100"])
+        
     def test_99_error_pk_not_numeric(self):    
         commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
     
@@ -156,7 +159,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_01_mig")
     #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    #sys.argv.append("TestMig.test_99_config_path")
+    #sys.argv.append("TestMig.test_11_mig_range_queue")
     sys.argv.append("TestMig")
     unittest.main()
     

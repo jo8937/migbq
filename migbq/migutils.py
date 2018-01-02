@@ -164,3 +164,17 @@ def get_all_tablenames_in_path(config_file_basepath):
         tablelist += tables
 
     return tablelist
+
+
+def divide_queue_range(pk_range, batch_size=500000):
+    range_list = []
+    range_size = pk_range[1] - pk_range[0]
+    chunk_size =  ((1 + range_size) / batch_size) 
+    
+    for i in xrange(0,chunk_size):
+        lower = pk_range[0] + (i * batch_size)
+        upper = pk_range[0] + ((i+1) * batch_size)
+        new_range = (lower, upper)
+        range_list.append(new_range)
+        
+    return range_list

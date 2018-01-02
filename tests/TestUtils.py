@@ -6,6 +6,7 @@ Created on 2017. 11. 27.
 import unittest
 from migbq.migutils import *
 from datetime import datetime
+import yaml
 
 class TestUtils(unittest.TestCase):
 
@@ -23,12 +24,23 @@ class TestUtils(unittest.TestCase):
                       "temp_csv_path_complete": "/tmp/pymig_csv_complete"
                       })
         print conf.__dict__
+        
+    def test_div_range(self):
+        data = yaml.load(u"""
+        dest_pkmax: 12345678
+        dest_pkmin: 2345678
+        """)
+        pk_range = (data["dest_pkmin"],data["dest_pkmax"],-1)
+        range_list = divide_queue_range(pk_range)
+        for r in range_list:
+            print r
+            
     
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
     #sys.argv.append("TestMeta.test_incomplete_log")
-    sys.argv.append("TestUtils.test_utils")
+    sys.argv.append("TestUtils.test_div_range")
     unittest.main()
     

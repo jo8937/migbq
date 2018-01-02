@@ -28,7 +28,7 @@ from peewee import *
 from peewee_mssql import MssqlDatabase  
 import __main__
 
-from migbq.migutils import *
+from migutils import *
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -36,6 +36,7 @@ import logging
 from playhouse.sqlite_ext import PrimaryKeyAutoIncrementField
 
 from MigrationMetadataManager import MigrationMetadataManager 
+from MigrationMetadataManager import MigrationMetadataDatabase
 from MigrationSet import MigrationSetJobResult
 from google.cloud import bigquery
 import copy
@@ -45,6 +46,7 @@ import yaml
 import argparse
 from os import getenv
 from setuptools.command.setopt import config_file
+
 
 class MigrationChildProcess(object):
     def __init__(self,conf):
@@ -251,7 +253,69 @@ class BQMig(object):
                     allcnt += datacnt
         
         return allcnt
+    
+    def init_range_queue_task(self):
+        metadb = MigrationMetadataDatabase(self.conf.meta_db_type, 
+                                           self.conf.meta_db_config,
+                                           metadata_tablename = "migrationmetadata_prepare_meta", 
+                                           metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.log)
+        metadb.check_and_create_table()
+        self.qdb = metadb 
+        return metadb
+    
+    def enqueue_range(self, src, tablename, pk_range, batch_size):
+        range_list = divide_queue_range(pk_range, batch_size)
+        pk_range_list = []
+        for pk_range in range_list:
+            q = self.qdb.meta_log.insert(
+                                    tableName = tablename,
+                                    pkName = src.pk_map[tablename],
+                                    pkUpper = pk_range[1],
+                                    pkLower = pk_range[0],
+                                    pkCurrent = 0
+                                     )
+            c = q._execute()
+            logid = c.lastrowid
+            self.log.info("qid : %s",logid)
+            pk_range_list.append((pk_range[0],pk_range[1],-1))
+            
+        return pk_range_list
+            
+    def get_queued_range(self, src, tablename, pk_range, batch_size):
+        self.init_range_queue_task()
+        try:
+            self.qdb.meta_log.get(self.qdb.meta_log.tableName == tablename)
+        except:
+            self.enqueue_range(src, tablename, pk_range, batch_size)
+            
+        rows = self.qdb.meta_log.select().where(self.qdb.meta_log.tableName == tablename and self.qdb.meta_log.checkComplete == 0).order_by(self.qdb.meta_log.idx.asc()).execute()
+        return rows
+    
+    def update_dequeue(self, idx):
+        self.qdb.meta_log.update(checkComplete = 1).where(self.qdb.meta_log.idx == idx).execute()
         
+    """
+    pk_range 에 있는걸 작업큐에 넣고 순차 실행
+    """
+    def run_migration_range_queued(self,tablename, pk_range, batch_size):
+        rowcnt = 0
+        self.init_migration();
+        with self.datasource as ds:
+            with self.tdforward as td:
+                ds.sync_field_list_src_and_dest(td)
+                queue_list = self.get_queued_range(ds,tablename, pk_range, batch_size)
+                print len(queue_list)
+                for row in queue_list:
+                    pk_range = (row.pkLower, row.pkUpper, -1)
+                    self.log.info("start range... %s - %s", tablename, pk_range)
+                    job_idx = ds.insert_log(tablename, pk_range)
+                    sendrowcnt, next_range, datacnt = ds.execute_range(tablename, pk_range, td.execute_async, job_idx)
+                    self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)
+                    self.update_dequeue(row.idx)
+                    rowcnt += 1
+        
+        return rowcnt
+            
     def reset_for_debug(self):
         self.init_migration();
         if os.name == "nt":
@@ -475,12 +539,13 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range','run_range_queued'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
     parser.add_argument("--lockname", help="custom lockname name", required=False)
     parser.add_argument("--range", help="seek pk range. ex) 0,10", required=False)
+    parser.add_argument("--range_batch_size", help="upload rows per chunk. ex) 500000", type=int, required=False)
     arg = parser.parse_args(args = array_command)
 
     cmd = arg.cmd
@@ -580,6 +645,12 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
             r = rg.split(",")
             range_list.append((int(r[0]),int(r[1]),-1))
         mig.run_migration_range(tablenames[0], range_list)            
+    elif cmd == "run_range_queued":
+        r = arg.range.split(",")
+        pkLower = int(r[0])
+        pkUpper = int(r[1])
+        pk_range = (pkLower, pkUpper, -1)
+        mig.run_migration_range_queued(tablenames[0], pk_range, arg.range_batch_size)            
     elif cmd == "run_with_no_retry":
         mig.run_migration()
     elif cmd == "some":
