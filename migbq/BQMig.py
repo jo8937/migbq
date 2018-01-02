@@ -291,8 +291,8 @@ class BQMig(object):
         rows = self.qdb.meta_log.select().where(self.qdb.meta_log.tableName == tablename and self.qdb.meta_log.checkComplete == 0).order_by(self.qdb.meta_log.idx.asc()).execute()
         return rows
     
-    def update_dequeue(self, idx):
-        self.qdb.meta_log.update(checkComplete = 1).where(self.qdb.meta_log.idx == idx).execute()
+    def update_dequeue(self, idx, log_idx):
+        self.qdb.meta_log.update(checkComplete = 1, pageToken = str(log_idx)).where(self.qdb.meta_log.idx == idx).execute()
         
     """
     pk_range 에 있는걸 작업큐에 넣고 순차 실행
@@ -311,7 +311,7 @@ class BQMig(object):
                     job_idx = ds.insert_log(tablename, pk_range)
                     sendrowcnt, next_range, datacnt = ds.execute_range(tablename, pk_range, td.execute_async, job_idx)
                     self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)
-                    self.update_dequeue(row.idx)
+                    self.update_dequeue(row.idx, job_idx)
                     rowcnt += 1
         
         return rowcnt

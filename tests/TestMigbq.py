@@ -59,6 +59,18 @@ class TestMig(unittest.TestCase):
             meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
             config = migbq.migutils.get_config(getenv("pymig_config_path"))
             )
+        self.conf = migbq.migutils.get_config(getenv("pymig_config_path"))
+        self.bq = bigquery.Client(project=self.conf.project)
+        self.dataset = self.bq.dataset(self.conf.datasetname)
+        self.forward = BigQueryForwarder(dataset=self.conf.datasetname,
+                                           prefix="",
+                                           csvpath = self.conf.csvpath,
+                                           logname="test",
+                                           config = self.conf)
+        self.qdb = MigrationMetadataDatabase("mssql", 
+                                   migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                   metadata_tablename = "migrationmetadata_prepare_meta", 
+                                   metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.migation.log)
         
         
     def test_00_reset(self):
@@ -70,20 +82,28 @@ class TestMig(unittest.TestCase):
         self.wait_for_mig_end()
         print "---------------- mig end --------------------------"
             
-    def wait_for_mig_end(self, retry_cnt = 0):
-        retry_max = 10
-        with self.migation as mig: 
+    def wait_for_mig_end(self):
+        with self.migation as mig:
             mig.log.setLevel(logging.DEBUG)
-            for row in mig.meta_log.select():
-                if row.jobId is None:
-                    print "idx(%s) jobId is null. wait 5 second for migbq finish..." % row.idx
-                    time.sleep(5)
-                    if retry_cnt > retry_max:
-                        print "test [check] command error!!!!!!!!!!!! retry limit over"
-                        return None
-                    return self.wait_for_mig_end(retry_cnt + 1)
-        return None
+            return self.wait_for_mig_end_inner(mig.meta_log)
     
+    def wait_for_mig_end_inner(self, meta_log, retry_cnt = 0, logidxs=None): 
+        retry_max = 10 
+        if logidxs:
+            rows = meta_log.select().where(meta_log.idx << logidxs)
+        else:
+            rows = meta_log.select()
+        
+        for row in rows:
+            if row.jobId is None:
+                print "idx(%s) jobId is null. wait 5 second for migbq finish..." % row.idx
+                time.sleep(5)
+                if retry_cnt > retry_max:
+                    print "test [check] command error!!!!!!!!!!!! retry limit over"
+                    return None
+                return self.wait_for_mig_end_inner(meta_log, retry_cnt + 1, logidxs)
+        return None
+                
     def make_error_job(self):
         with self.migation as mig:
             mig.log.setLevel(logging.DEBUG)
@@ -106,17 +126,40 @@ class TestMig(unittest.TestCase):
     def test_05_meta(self):
         commander(["remaindayall", self.configfile])
 
+    def reset_bigquery_table(self, tablename):
+        if tablename:
+            tbl = self.dataset.table(tablename)
+            print tbl.delete()
+    
+    def check_bigquery_count(self, tablename):
+        if tablename:
+            try:
+                cnt = self.forward.count_all(tablename, "id")
+                return cnt
+            except:
+                self.migation.log.error("bigquery error",exc_info=True)
+                return 0 
+            
     def reset_temp_db(self):
-        metadb = MigrationMetadataDatabase("mssql", 
-                                   migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-                                   metadata_tablename = "migrationmetadata_prepare_meta", 
-                                   metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.migation.log)
-        metadb.meta_log.delete().execute()
-
+        tablename = self.get_tablename_in_queue()
+        cnt = self.check_bigquery_count(tablename)
+        if cnt > 0:
+            self.reset_bigquery_table(tablename)
+        self.qdb.meta_log.delete().execute()
+        return self.qdb 
+    
+    def get_tablename_in_queue(self):
+        tablename = next(iter(set([row.tableName for row in self.qdb.meta_log.select().execute()])),None)
+        return tablename 
+        
     def test_11_mig_range_queue(self):
-        self.reset_temp_db()
+        metadb = self.reset_temp_db()
         commander(["run_range_queued", self.configfile,"--range","0,234","--range_batch_size","100"])
-        time.sleep(20)
+        self.wait_for_mig_end_inner(metadb.meta_log, logidxs = [int(r.pageToken) for r in metadb.meta_log.select()])
+        tablename = self.get_tablename_in_queue()
+        cnt = self.check_bigquery_count(tablename)
+        print "bigquery cnt : %s" % cnt
+        self.assertGreater(cnt, 1)
         
     def test_99_error_pk_not_numeric(self):    
         commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
