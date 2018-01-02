@@ -5,7 +5,8 @@ Created on 2017. 11. 27.
 '''
 import unittest
 import migbq
-from migbq.MigrationMetadataManager import MigrationMetadataManager
+from migbq.MigrationMetadataManager import MigrationMetadataManager,\
+    MigrationMetadataDatabase
 from migbq.DummyForwarder import DummyForwarder
 from migbq.BigQueryForwarder import BigQueryForwarder
 from migbq.migutils import *
@@ -50,7 +51,16 @@ class TestBigquery(unittest.TestCase):
 class TestMig(unittest.TestCase):
     
     configfile = getenv("pymig_config_path_jinja")
-    
+    def setUp(self):
+        unittest.TestCase.setUp(self)
+        self.migation = MigrationMetadataManager(
+            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+            meta_db_type = "mssql",
+            meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+            config = migbq.migutils.get_config(getenv("pymig_config_path"))
+            )
+        
+        
     def test_00_reset(self):
         commander_executer("reset_for_debug", self.configfile)
     
@@ -59,17 +69,10 @@ class TestMig(unittest.TestCase):
         print "----------------- wait for jobId full -------------"
         self.wait_for_mig_end()
         print "---------------- mig end --------------------------"
-                
-    
+            
     def wait_for_mig_end(self, retry_cnt = 0):
         retry_max = 10
-        migation = MigrationMetadataManager(
-            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            meta_db_type = "mssql",
-            meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            config = migbq.migutils.get_config(getenv("pymig_config_path"))
-            )
-        with migation as mig: 
+        with self.migation as mig: 
             mig.log.setLevel(logging.DEBUG)
             for row in mig.meta_log.select():
                 if row.jobId is None:
@@ -82,13 +85,7 @@ class TestMig(unittest.TestCase):
         return None
     
     def make_error_job(self):
-        migation = MigrationMetadataManager(
-            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            meta_db_type = "mssql",
-            meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            config = migbq.migutils.get_config(getenv("pymig_config_path"))
-            )
-        with migation as mig:
+        with self.migation as mig:
             mig.log.setLevel(logging.DEBUG)
             #print "..."
             mig.meta_log.update(jobComplete = -1).execute()
@@ -109,8 +106,17 @@ class TestMig(unittest.TestCase):
     def test_05_meta(self):
         commander(["remaindayall", self.configfile])
 
+    def reset_temp_db(self):
+        metadb = MigrationMetadataDatabase("mssql", 
+                                   migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                   metadata_tablename = "migrationmetadata_prepare_meta", 
+                                   metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.migation.log)
+        metadb.meta_log.delete().execute()
+
     def test_11_mig_range_queue(self):
+        self.reset_temp_db()
         commander(["run_range_queued", self.configfile,"--range","0,234","--range_batch_size","100"])
+        time.sleep(20)
         
     def test_99_error_pk_not_numeric(self):    
         commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
@@ -131,7 +137,8 @@ class TestMig(unittest.TestCase):
         
     def test_99_updatepk(self):
         commander_executer("updatepk", self.configfile)
-            
+        
+        
 class TestMigUtils(unittest.TestCase):
     
     configfile = getenv("pymig_config_path")
@@ -159,7 +166,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_01_mig")
     #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    #sys.argv.append("TestMig.test_11_mig_range_queue")
-    sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_11_mig_range_queue")
+    #sys.argv.append("TestMig")
     unittest.main()
     
