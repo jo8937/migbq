@@ -164,7 +164,7 @@ class BQMig(object):
         
         
         
-    def init_migration(self):
+    def init_migration(self, tablenames = None, dataset=None):
         
         #from BigQueryDatasource import BigQueryDatasource 
         #from FluentdForwarder import FluentdForwarder
@@ -179,12 +179,12 @@ class BQMig(object):
                                         meta_db_config=conf.meta_db_config,
                                         listsize = conf.listsize,
                                         stop_when_no_more_data = True,
-                                        tablenames = self.tablenames,
+                                        tablenames = self.tablenames or tablenames,
                                         logname = self.logname,
                                         config = conf
                                         )
         
-        self.tdforward = BigQueryForwarder(dataset=conf.datasetname,
+        self.tdforward = BigQueryForwarder(dataset=conf.datasetname or dataset,
                                            prefix="",
                                            csvpath = conf.csvpath,
                                            logname=self.logname,
@@ -477,36 +477,43 @@ order by dt desc
             with self.tdforward as f:
                 ds.validate_pk_sync(tablename, f, pk_range)
     
-    def sync_schema(self,tablenames=None):
+    def sync_schema(self,tablenames):
         self.init_migration()
         with self.datasource as ds:
-            with self.tdforward as f:
-                if tablenames is None:
-                    tablenames = dict([(row.tableName,row.dataset) for row in ds.meta.select(ds.meta.tableName, ds.meta.dataset)])
-                
-                for tablename in tablenames:
-                    dataset = tablenames[tablename]
-                    
-                    if not f.dataset.table(tablename).exists():
-                        f.dataset_name = dataset
-                        f.dataset = f.bq.dataset(f.dataset_name)
+            with self.tdforward as fw:
+                self.sync_schema_process(tablenames, fw.datasetname, ds, fw)
 
-                    self.log.info("-------------------------------------------")
-                    self.log.info("check fields of [%s.%s]", dataset , tablename)
-                    
-                    tbl = f.bq.dataset( tablenames[tablename] ).table(tablename)
-                    tbl.reload()
-                # dest 의 컬럼들 가져옴.
-                    src_cols = [k for k in ds.col_map[tablename]]
-                    dest_cols = [field.name for field in tbl.schema]
-                    mission_cols = set(src_cols) - set(dest_cols)
-                    
-                    self.log.info("### mssql : %s",src_cols)
-                    self.log.info("### bigquery : %s",dest_cols)
-                    self.log.info("### missing : %s",mission_cols)
+    def sync_schema_all_in_meta(self):
+        mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = self.tablenames, config=self.conf)
+        tablenameMap = dict([(row.tableName,row.dataset) for row in mig.meta.select(mig.meta.tableName, mig.meta.dataset)])
+        datasets = set([dataset for dataset in tablenameMap.values()])
+        self.log.info("all dataset : %s", datasets)
+        for dataset in datasets:
+            tablenames = [t for t in tablenameMap if tablenameMap[t] == dataset]
+            self.init_migration(tablenames, dataset)
+            with self.datasource as ds:
+                with self.tdforward as fw:
+                    self.sync_schema_process(tablenames, dataset, ds, fw)
 
-                ds.sync_field_list_src_and_dest(f)
-                     
+
+    def sync_schema_process(self, tablenames, dataset, ds, fw):
+        for tablename in tablenames: 
+            self.log.info("-------------------------------------------")
+            self.log.info("check fields of [%s.%s]", dataset , tablename)
+            
+            tbl = fw.dataset.table(tablename)
+            tbl.reload()
+        # dest 의 컬럼들 가져옴.
+            src_cols = [k for k in ds.col_map[tablename]]
+            dest_cols = [field.name for field in tbl.schema]
+            mission_cols = set(src_cols) - set(dest_cols)
+            
+            self.log.info("### mssql : %s",src_cols)
+            self.log.info("### bigquery : %s",dest_cols)
+            self.log.info("### missing : %s",mission_cols)
+
+        ds.sync_field_list_src_and_dest(fw)
+        
     def diff_approximate(self):
         return self.diff("count_all")
     
@@ -666,7 +673,7 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
     elif cmd == "sync_schema":
         mig.sync_schema(tablenames)
     elif cmd == "sync_schema_all_in_meta":
-        mig.sync_schema(tablenames=None)
+        mig.sync_schema_all_in_meta()
     elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()
