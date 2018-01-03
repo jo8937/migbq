@@ -181,6 +181,7 @@ class MigrationMetadataManager(MigrationRoot):
         if self.select_size is None:
             self.select_size = data["config"].source.get("in",{}).get("batch_size",10000)
         
+        self.conf = data["config"]
         metaconf = data["config"].source.get("meta",{}) or {}
         
         self.metadata_tablename = metaconf.get("table")
@@ -365,7 +366,9 @@ class MigrationMetadataManager(MigrationRoot):
                          lastPk= mmc[1], 
                          currentPk = mmc[0], 
                          pkName = pkname,
-                         rowCnt = 0
+                         rowCnt = 0,
+                         dbname = self.conf.dbconf.get("database"),
+                         dataset = self.conf.datasetname,
                          )
         try:
             

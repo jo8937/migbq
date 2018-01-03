@@ -482,12 +482,12 @@ order by dt desc
         with self.datasource as ds:
             with self.tdforward as f:
                 if tablenames is None:
-                    tablenames = [row.tableName for row in ds.meta.select(ds.meta.tableName)]
+                    tablenames = dict([(row.tableName,row.dataset) for row in ds.meta.select(ds.meta.tableName, ds.meta.dataset)])
                 
                 for tablename in tablenames:
                     self.log.info("-------------------------------------------")
-                    self.log.info("check fields of [%s]", tablename)
-                    tbl = f.dataset.table(tablename)
+                    self.log.info("check fields of [%s.%s]", tablenames[tablename], tablename)
+                    tbl = f.bq.dataset( tablenames[tablename] ).table(tablename)
                     tbl.reload()
                 # dest 의 컬럼들 가져옴.
                     src_cols = [k for k in ds.col_map[tablename]]

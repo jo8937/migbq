@@ -7,8 +7,9 @@ import unittest
 from migbq.migutils import *
 from datetime import datetime
 import yaml
+from os import getenv
 
-class TestUtils(unittest.TestCase):
+class TestMigUtils(unittest.TestCase):
 
     def test_utils(self):
         conf = get_config_sample({
@@ -34,13 +35,17 @@ class TestUtils(unittest.TestCase):
         range_list = divide_queue_range(pk_range)
         for r in range_list:
             print r
-            
+    
+    def test_get_config(self):    
+        conf = getenv("pymig_config_path_jinja")
+        print conf.__dict__
+        self.assertIsNotNone(conf)
     
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
     #sys.argv.append("TestMeta.test_incomplete_log")
-    sys.argv.append("TestUtils.test_div_range")
+    sys.argv.append("TestMigUtils.test_div_range")
     unittest.main()
     
