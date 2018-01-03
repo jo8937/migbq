@@ -485,8 +485,15 @@ order by dt desc
                     tablenames = dict([(row.tableName,row.dataset) for row in ds.meta.select(ds.meta.tableName, ds.meta.dataset)])
                 
                 for tablename in tablenames:
+                    dataset = tablenames[tablename]
+                    
+                    if not f.dataset.table(tablename).exists():
+                        f.dataset_name = dataset
+                        f.dataset = f.bq.dataset(f.dataset_name)
+
                     self.log.info("-------------------------------------------")
-                    self.log.info("check fields of [%s.%s]", tablenames[tablename], tablename)
+                    self.log.info("check fields of [%s.%s]", dataset , tablename)
+                    
                     tbl = f.bq.dataset( tablenames[tablename] ).table(tablename)
                     tbl.reload()
                 # dest 의 컬럼들 가져옴.
