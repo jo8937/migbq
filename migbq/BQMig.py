@@ -179,12 +179,12 @@ class BQMig(object):
                                         meta_db_config=conf.meta_db_config,
                                         listsize = conf.listsize,
                                         stop_when_no_more_data = True,
-                                        tablenames = self.tablenames or tablenames,
+                                        tablenames = tablenames or self.tablenames,
                                         logname = self.logname,
                                         config = conf
                                         )
         
-        self.tdforward = BigQueryForwarder(dataset=conf.datasetname or dataset,
+        self.tdforward = BigQueryForwarder(dataset=dataset or conf.datasetname,
                                            prefix="",
                                            csvpath = conf.csvpath,
                                            logname=self.logname,
@@ -484,6 +484,7 @@ order by dt desc
                 self.sync_schema_process(tablenames, fw.datasetname, ds, fw)
 
     def sync_schema_all_in_meta(self):
+        mission_cols_list = []
         mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = self.tablenames, config=self.conf)
         tablenameMap = dict([(row.tableName,row.dataset) for row in mig.meta.select(mig.meta.tableName, mig.meta.dataset)])
         datasets = set([dataset for dataset in tablenameMap.values()])
@@ -493,10 +494,14 @@ order by dt desc
             self.init_migration(tablenames, dataset)
             with self.datasource as ds:
                 with self.tdforward as fw:
-                    self.sync_schema_process(tablenames, dataset, ds, fw)
-
+                    ret = self.sync_schema_process(tablenames, dataset, ds, fw)
+                    mission_cols_list += ret
+        
+        self.log.info("----------- synced missing fields -----------------")            
+        self.log.info("%s",mission_cols_list)
 
     def sync_schema_process(self, tablenames, dataset, ds, fw):
+        mission_cols_list = []
         for tablename in tablenames: 
             self.log.info("-------------------------------------------")
             self.log.info("check fields of [%s.%s]", dataset , tablename)
@@ -511,8 +516,12 @@ order by dt desc
             self.log.info("### mssql : %s",src_cols)
             self.log.info("### bigquery : %s",dest_cols)
             self.log.info("### missing : %s",mission_cols)
+            
+            mission_cols_list.append(mission_cols)
 
+        self.log.info("checking all bigqueyr tables (%s) ... ", len(tablenames))
         ds.sync_field_list_src_and_dest(fw)
+        return mission_cols_list
         
     def diff_approximate(self):
         return self.diff("count_all")
