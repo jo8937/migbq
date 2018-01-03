@@ -168,8 +168,8 @@ class TestMeta(unittest.TestCase):
         datasource.log.setLevel(logging.DEBUG)
         bq.log.setLevel(logging.DEBUG)
         commander(["run_range",getenv("pymig_config_path"),"--tablenames","persons9","--range","0,10+12,15+20,30+100,101"])
-                
-        
+
+    
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")

@@ -477,6 +477,26 @@ order by dt desc
             with self.tdforward as f:
                 ds.validate_pk_sync(tablename, f, pk_range)
                         
+    def sync_schema(self,tablenames):
+        self.init_migration()
+        with self.datasource as ds:
+            with self.tdforward as f:
+                for tablename in tablenames:
+                    self.log.info("-------------------------------------------")
+                    self.log.info("check fields of [%s]", tablename)
+                    tbl = f.dataset.table(tablename)
+                    tbl.reload()
+                # dest 의 컬럼들 가져옴.
+                    src_cols = [k for k in ds.col_map[tablename]]
+                    dest_cols = [field.name for field in tbl.schema]
+                    mission_cols = set(src_cols) - set(dest_cols)
+                    
+                    self.log.info("### mssql : %s",src_cols)
+                    self.log.info("### bigquery : %s",dest_cols)
+                    self.log.info("### missing : %s",mission_cols)
+
+                ds.sync_field_list_src_and_dest(f)
+                     
     def diff_approximate(self):
         return self.diff("count_all")
     
@@ -539,7 +559,7 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range','run_range_queued'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range','run_range_queued','sync_schema'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
@@ -633,6 +653,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
     elif cmd == "sync_range":
         r = arg.range.split(",")
         mig.syncdata(tablenames[0], (int(r[0]),int(r[1]),-1))
+    elif cmd == "sync_schema":
+        mig.sync_schema(tablenames)
     elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()

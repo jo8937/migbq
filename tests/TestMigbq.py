@@ -17,6 +17,7 @@ from os import getenv
 from migbq.BigQueryJobChecker import *
 from migbq.BQMig import commander, commander_executer
 import time
+import datetime
 
         
 class TestBigquery(unittest.TestCase):
@@ -53,12 +54,11 @@ class TestMig(unittest.TestCase):
     configfile = getenv("pymig_config_path_jinja")
     def setUp(self):
         unittest.TestCase.setUp(self)
-        self.migation = MigrationMetadataManager(
-            db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            meta_db_type = "mssql",
-            meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
-            config = migbq.migutils.get_config(getenv("pymig_config_path"))
-            )
+        self.migration = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                     meta_db_type = "mssql",
+                                     meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
+                                     config = migbq.migutils.get_config(getenv("pymig_config_path"))
+                                     ) 
         self.conf = migbq.migutils.get_config(getenv("pymig_config_path"))
         self.bq = bigquery.Client(project=self.conf.project)
         self.dataset = self.bq.dataset(self.conf.datasetname)
@@ -70,7 +70,7 @@ class TestMig(unittest.TestCase):
         self.qdb = MigrationMetadataDatabase("mssql", 
                                    migbq.migutils.get_connection_info(getenv("pymig_config_path")),
                                    metadata_tablename = "migrationmetadata_prepare_meta", 
-                                   metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.migation.log)
+                                   metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.migration.log)
         
         
     def test_00_reset(self):
@@ -83,7 +83,7 @@ class TestMig(unittest.TestCase):
         print "---------------- mig end --------------------------"
             
     def wait_for_mig_end(self):
-        with self.migation as mig:
+        with self.migration as mig:
             mig.log.setLevel(logging.DEBUG)
             return self.wait_for_mig_end_inner(mig.meta_log)
     
@@ -105,7 +105,7 @@ class TestMig(unittest.TestCase):
         return None
                 
     def make_error_job(self):
-        with self.migation as mig:
+        with self.migration as mig:
             mig.log.setLevel(logging.DEBUG)
             #print "..."
             mig.meta_log.update(jobComplete = -1).execute()
@@ -137,7 +137,7 @@ class TestMig(unittest.TestCase):
                 cnt = self.forward.count_all(tablename, "id")
                 return cnt
             except:
-                self.migation.log.error("bigquery error",exc_info=True)
+                self.migration.log.error("bigquery error",exc_info=True)
                 return 0 
             
     def reset_temp_db(self):
@@ -157,9 +157,23 @@ class TestMig(unittest.TestCase):
         commander(["run_range_queued", self.configfile,"--range","0,234","--range_batch_size","100"])
         self.wait_for_mig_end_inner(metadb.meta_log, logidxs = [int(r.pageToken) for r in metadb.meta_log.select()])
         tablename = self.get_tablename_in_queue()
-        cnt = self.check_bigquery_count(tablename)
-        print "bigquery cnt : %s" % cnt
-        self.assertGreater(cnt, 1)
+#         cnt = self.check_bigquery_count(tablename)
+#         print "bigquery cnt : %s" % cnt
+#         self.assertGreater(cnt, 1)
+    
+    def add_field_mssql(self, colname):
+        with self.migration as ds:
+            ds.conn.execute_query("alter table persons9 add %s int" % colname)
+
+    def drop_field_mssql(self, colname):
+        with self.migration as ds:
+            ds.conn.execute_query("alter table persons9 drop column %s" % colname)
+    
+    def test_99_sync_schema(self):
+        colname = "tag_%s" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.add_field_mssql(colname)     
+        commander(["sync_schema", self.configfile])
+        self.drop_field_mssql(colname)
         
     def test_99_error_pk_not_numeric(self):    
         commander(["run_with_no_retry", self.configfile,"--tablenames","companycode","persons9"])
@@ -209,7 +223,7 @@ if __name__ == '__main__':
     #sys.argv.append("TestMig.test_01_mig")
     #sys.argv.append("TestMig.test_02_check")
     #sys.argv.append("TestMig.test_02_retry")
-    sys.argv.append("TestMig.test_11_mig_range_queue")
-    #sys.argv.append("TestMig")
+    #sys.argv.append("TestMig.test_11_mig_range_queue")
+    sys.argv.append("TestMig.test_99_sync_schema")
     unittest.main()
     
