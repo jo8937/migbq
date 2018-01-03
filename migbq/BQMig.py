@@ -476,11 +476,14 @@ order by dt desc
         with self.datasource as ds:
             with self.tdforward as f:
                 ds.validate_pk_sync(tablename, f, pk_range)
-                        
-    def sync_schema(self,tablenames):
+    
+    def sync_schema(self,tablenames=None):
         self.init_migration()
         with self.datasource as ds:
             with self.tdforward as f:
+                if tablenames is None:
+                    tablenames = [row.tableName for row in ds.meta.select(ds.meta.tableName)]
+                
                 for tablename in tablenames:
                     self.log.info("-------------------------------------------")
                     self.log.info("check fields of [%s]", tablename)
@@ -559,7 +562,7 @@ def generate_lock_name(arg):
 def commander(array_command=None):
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range','run_range_queued','sync_schema'))
+    parser.add_argument("cmd", help="command", choices=('check', 'run', 'some', 'sync', 'meta', 'retry', 'run_with_no_retry','remaindayall','remainday','sync_range','run_range','run_range_queued','sync_schema','sync_schema_all_in_meta'))
     parser.add_argument("config_file", help="source database info KEY (in MigrationConfig.py)")
     parser.add_argument("--tablenames", help="source table names", nargs="+", required=False)
     parser.add_argument("--dataset", help="destination bigquery dataset name", required=False)
@@ -655,6 +658,8 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
         mig.syncdata(tablenames[0], (int(r[0]),int(r[1]),-1))
     elif cmd == "sync_schema":
         mig.sync_schema(tablenames)
+    elif cmd == "sync_schema_all_in_meta":
+        mig.sync_schema(tablenames=None)
     elif cmd == "run":
         if len(mig.tablenames) > 0:
             mig.run_forever()

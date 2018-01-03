@@ -172,7 +172,7 @@ class TestMig(unittest.TestCase):
     def test_99_sync_schema(self):
         colname = "tag_%s" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.add_field_mssql(colname)     
-        commander(["sync_schema", self.configfile])
+        commander(["sync_schema_all_in_meta", self.configfile])
         self.drop_field_mssql(colname)
         
     def test_99_error_pk_not_numeric(self):    
