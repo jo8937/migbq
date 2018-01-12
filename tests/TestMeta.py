@@ -149,6 +149,10 @@ class TestMeta(unittest.TestCase):
 
     def test_sync(self):
         self.create_mission_pk()
+        self.sync_inner()
+        self.sync_inner()
+        
+    def sync_inner(self):
         datasource = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
                                      meta_db_type = "mssql",
                                      meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),

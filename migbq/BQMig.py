@@ -323,9 +323,10 @@ class BQMig(object):
                     queue_idx_list.append(row.idx)
                     job_idx_list.append(job_idx)
         
-        self.wait_for_all_queue_complete(job_idx_list)
         
-        self.qdb.meta_log.delete().where(self.qdb.meta_log.idx << queue_idx_list).execute()
+        if len(queue_idx_list) > 0:
+            self.wait_for_all_queue_complete(job_idx_list)
+            self.qdb.meta_log.delete().where(self.qdb.meta_log.idx << queue_idx_list).execute()
         
         return rowcnt
     
@@ -513,7 +514,10 @@ order by dt desc
         with self.datasource as ds:
             with self.tdforward as f:
                 unsync_pk_range_list = ds.validate_pk_sync(tablename, f, pk_range)
-                self.run_migration_range_queued(tablename, unsync_pk_range_list, self.conf.listsize )
+                if len(unsync_pk_range_list) > 0:
+                    self.run_migration_range_queued(tablename, unsync_pk_range_list, self.conf.listsize )
+                else:
+                    self.log.info("##### No unsync Pk #####")
     
     def sync_schema(self,tablenames):
         self.init_migration()
