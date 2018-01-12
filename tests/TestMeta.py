@@ -148,6 +148,7 @@ class TestMeta(unittest.TestCase):
                 print m.meta.select()
 
     def test_sync(self):
+        self.create_mission_pk()
         datasource = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
                                      meta_db_type = "mssql",
                                      meta_db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
@@ -169,6 +170,10 @@ class TestMeta(unittest.TestCase):
         bq.log.setLevel(logging.DEBUG)
         commander(["run_range",getenv("pymig_config_path"),"--tablenames","persons9","--range","0,10+12,15+20,30+100,101"])
 
+    def create_mission_pk(self):
+        bigquery = BigQueryForwarder(dataset = get_config(getenv("pymig_config_path")).source["out"]["dataset"] , prefix="", config = get_config( getenv("pymig_config_path")  ))
+        with bigquery as bq: 
+            bq.query_standard("delete from `dwtest5.persons9`  where id in (1,3,5,6,101)")
     
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
@@ -178,6 +183,7 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMeta.test_incomplete_log_range")
 #     sys.argv.append("TestMeta.test_remain_day")
 #     sys.argv.append("TestMeta.test_custom_meta")
+    #sys.argv.append("TestMeta.test_run_range")
     sys.argv.append("TestMeta.test_sync")
     unittest.main()
     

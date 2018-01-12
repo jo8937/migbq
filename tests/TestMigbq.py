@@ -49,6 +49,6 @@ class TestMig(TestRoot):
         
 if __name__ == '__main__':
     #sys.argv.append("TestMig.test_05_meta")
-    sys.argv.append("TestMig")
+    sys.argv.append("TestMig.test_03_sync")
     unittest.main()
     

@@ -174,6 +174,8 @@ def divide_queue_range(pk_range, batch_size=500000):
     for i in xrange(0,chunk_size):
         lower = pk_range[0] + (i * batch_size)
         upper = pk_range[0] + ((i+1) * batch_size)
+        if pk_range[1] < upper:
+            upper = pk_range[1]  
         new_range = (lower, upper)
         range_list.append(new_range)
         

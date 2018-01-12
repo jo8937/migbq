@@ -217,8 +217,7 @@ WHERE
     
     def zip_select_query_in_length(self,pk_range):
         pk_range = list(pk_range)
-        pk_range.append(max(pk_range) + 1)
-        
+                
         minval = pk_range[0]
         preval = pk_range[0] - 1
         range_list = []
@@ -233,6 +232,9 @@ WHERE
             
     def generate_where_query_in(self, pkname, pk_range):
         zip_range_list = self.zip_select_query_in_length(pk_range)
+        return self.generate_where_query_in_zip_range_list(pkname, zip_range_list)
+
+    def generate_where_query_in_zip_range_list(self, pkname, zip_range_list):
         query_list = []
         dep_list = []
         for zip_range in zip_range_list:
@@ -245,6 +247,27 @@ WHERE
             query_list.append( pkname + " IN (" + ",".join([str(i) for i in dep_list]) + ")")
             
         return " OR ".join(query_list)
+    
+    def generate_select_query_in_range_list(self, tablename, pk_range_list):    
+        
+        if self.col_map[tablename] is None:
+            self.log.error("Table Schema Not Exists : %s", tablename)
+            return None
+    
+        query = """
+SELECT 
+    %s 
+FROM 
+    %s (nolock) 
+WHERE 
+    %s  
+""" % ( ",".join([nm for nm in self.col_map[tablename].keys()]) 
+        , tablename
+        , self.generate_where_query_in_zip_range_list(self.pk_map[tablename], pk_range_list) ) 
+
+        self.log.debug("SQL : %s", query)
+        
+        return query     
     
     def generate_select_query_in(self, tablename, pk_range):    
         
@@ -290,6 +313,9 @@ WHERE
     
     def select_datalist_in_use_hashlist(self, tablename, pk_range):
         return self.select_datalist_inner_use_hashlist(tablename, pk_range, self.generate_select_query_in)
+
+    def select_datalist_in_use_range_list(self, tablename, pk_range_list):
+        return self.select_datalist_inner_use_hashlist(tablename, pk_range_list, self.generate_select_query_in_range_list)
     
     def select_datalist_inner_use_hashlist(self, tablename, pk_range, generate_callback):
         #query = self.generate_select_query(tablename, pk_range)

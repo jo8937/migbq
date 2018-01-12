@@ -16,6 +16,7 @@ import logging
 from google.cloud import bigquery
 from Forwarder import Forwarder
 from migbq import migutils
+import uuid
 
 class BigQueryForwarder(Forwarder):
     def __init__(self, **options):
@@ -166,18 +167,19 @@ class BigQueryForwarder(Forwarder):
                         for field in tbl.schema:
                             key = field.name
                             val = rowori.get(key)
-                            
-                            if col_type_map[key] == "INTEGER":
+                                                        
+                            if col_type_map.get(key) == "INTEGER":
                                 row.append(long(val))
-                            elif col_type_map[key] == "FLOAT":
+                            elif col_type_map.get(key) == "FLOAT":
                                 row.append(float(val))
-                            elif col_type_map[key] == "TIMESTAMP":
+                            elif col_type_map.get(key) == "TIMESTAMP":
                                 row.append(unicode(val).encode("utf-8"))
                             else:
                                 if val is None:
                                     row.append( "" )
                                 else:
                                     row.append( unicode(val).encode("utf-8") )
+                                    
                         writer.writerow(tuple(row))
                         rowcnt_processed = rowcnt_processed + 1
                     
@@ -340,12 +342,64 @@ WHERE
             return []   
          
     ######################### 결과 한줄만 리턴하는 빅쿼리..
-    def query_one_row(self, sql):
+    def query_standard(self, sql):
+        self.log.debug(sql)
+        jobId = "migbq-fd-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f") + "-" + str(uuid.uuid4())
+        job = self.bq.run_async_query(jobId,sql)
+        job.timeout_ms = 300000
+        job.max_results = 1
+        job.use_legacy_sql = False 
+        job.begin()
+        jobList = self.wait_for_jobids([jobId])
+        return jobList
+
+    def get_job(self, jobId, bq):
+        from google.cloud.bigquery.job import _AsyncJob, QueryJob
+        job = _AsyncJob(jobId, client=bq)
+        job.reload()
+        return job
+    
+    def wait_for_jobids(self,jobIdList):
+        bq = self.bq
+        remainJobIdSet = set(jobIdList)
+        resultList = []
+        cnt = 1
+        print "waiting job finish..."
+        while True:
+            jobList = []
+            for jobId in remainJobIdSet:
+                job = self.get_job(jobId, bq)
+                jobList.append( job )
+            
+            for job in jobList:
+                if job.state == 'DONE':
+                    remainJobIdSet.remove(job.name)
+                    resultList.append( job )
+                if job.error_result:
+                    print job.errors
+    
+            if len(remainJobIdSet) == 0:
+                break
+            else:
+                time.sleep(5)
+                print "%s\r" % cnt
+                cnt = cnt + 1
+                
+        print "all ok"
+        
+        return jobList
+        
+    ######################### 결과 한줄만 리턴하는 빅쿼리..
+    def query_one_row(self, sql, use_legacy=None):
         self.log.debug(sql)
         
         query = self.bq.run_sync_query(sql)
         query.timeout_ms = 300000 
         query.max_results = 1
+        
+        if use_legacy:
+            query.use_legacy_sql = use_legacy 
+        
         query.run()
         
         if not query.complete:

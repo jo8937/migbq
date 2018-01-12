@@ -263,8 +263,13 @@ class BQMig(object):
         self.qdb = metadb 
         return metadb
     
-    def enqueue_range(self, src, tablename, pk_range, batch_size):
-        range_list = divide_queue_range(pk_range, batch_size)
+    def enqueue_range(self, src, tablename, pk_range_list, batch_size):
+        
+        range_list = [] 
+        
+        for pk_range in pk_range_list:
+            range_list.extend( divide_queue_range(pk_range, batch_size) )
+            
         pk_range_list = []
         for pk_range in range_list:
             q = self.qdb.meta_log.insert(
@@ -281,29 +286,31 @@ class BQMig(object):
             
         return pk_range_list
             
-    def get_queued_range(self, src, tablename, pk_range, batch_size):
+    def get_queued_range(self, src, tablename, pk_range_list, batch_size):
         self.init_range_queue_task()
         try:
             self.qdb.meta_log.get(self.qdb.meta_log.tableName == tablename)
         except:
-            self.enqueue_range(src, tablename, pk_range, batch_size)
+            self.enqueue_range(src, tablename, pk_range_list, batch_size)
             
         rows = self.qdb.meta_log.select().where(self.qdb.meta_log.tableName == tablename and self.qdb.meta_log.checkComplete == 0).order_by(self.qdb.meta_log.idx.asc()).execute()
         return rows
     
     def update_dequeue(self, idx, log_idx):
         self.qdb.meta_log.update(checkComplete = 1, pageToken = str(log_idx)).where(self.qdb.meta_log.idx == idx).execute()
-        
+            
     """
     pk_range 에 있는걸 작업큐에 넣고 순차 실행
     """
-    def run_migration_range_queued(self,tablename, pk_range, batch_size):
+    def run_migration_range_queued(self,tablename, pk_range_list, batch_size):
         rowcnt = 0
         self.init_migration();
+        job_idx_list = []
+        queue_idx_list = []
         with self.datasource as ds:
             with self.tdforward as td:
                 ds.sync_field_list_src_and_dest(td)
-                queue_list = self.get_queued_range(ds,tablename, pk_range, batch_size)
+                queue_list = self.get_queued_range(ds,tablename, pk_range_list, batch_size)
                 print len(queue_list)
                 for row in queue_list:
                     pk_range = (row.pkLower, row.pkUpper, -1)
@@ -313,9 +320,39 @@ class BQMig(object):
                     self.log.info("finish...%s | %s | %s",sendrowcnt, next_range, datacnt)
                     self.update_dequeue(row.idx, job_idx)
                     rowcnt += 1
+                    queue_idx_list.append(row.idx)
+                    job_idx_list.append(job_idx)
+        
+        self.wait_for_all_queue_complete(job_idx_list)
+        
+        self.qdb.meta_log.delete().where(self.qdb.meta_log.idx << queue_idx_list).execute()
         
         return rowcnt
-            
+    
+    def wait_for_all_queue_complete(self, job_idx_list):
+        prevJobIdNullCount = 0
+        curPrevSameCount = 0 
+        
+        with self.datasource as ds:
+
+            while True:            
+                jobIdNullCount = ds.meta_log.select().where(
+                    (ds.meta_log.idx << job_idx_list) & ds.meta_log.jobId.is_null()).count()
+                
+                if jobIdNullCount > 0:
+                    self.log.info("jobID null count : %s , wait 30 second and check again...", jobIdNullCount)
+                    if prevJobIdNullCount == jobIdNullCount:
+                        curPrevSameCount += 1
+                        if curPrevSameCount > 600:
+                            msg = "!!! Bigquery JobId not create about 10 Hour. It's maybe error or bug. jobId Count : %s" % (jobIdNullCount)
+                            self.log.error(msg)
+    
+                    prevJobIdNullCount = jobIdNullCount
+                    time.sleep(60)
+                else:
+                    self.log.info("All jobId Created")
+                    break
+        
     def reset_for_debug(self):
         self.init_migration();
         if os.name == "nt":
@@ -475,7 +512,8 @@ order by dt desc
         self.init_migration()
         with self.datasource as ds:
             with self.tdforward as f:
-                ds.validate_pk_sync(tablename, f, pk_range)
+                unsync_pk_range_list = ds.validate_pk_sync(tablename, f, pk_range)
+                self.run_migration_range_queued(tablename, unsync_pk_range_list, self.conf.listsize )
     
     def sync_schema(self,tablenames):
         self.init_migration()
@@ -484,7 +522,7 @@ order by dt desc
                 self.sync_schema_process(tablenames, fw.datasetname, ds, fw)
 
     def sync_schema_all_in_meta(self):
-        mission_cols_list = []
+        fieldinfomap_total = {}
         mig = MigrationMetadataManager(meta_db_config = self.conf.meta_db_config, meta_db_type = self.conf.meta_db_type, tablenames = self.tablenames, config=self.conf)
         tablenameMap = dict([(row.tableName,row.dataset) for row in mig.meta.select(mig.meta.tableName, mig.meta.dataset)])
         datasets = set([dataset for dataset in tablenameMap.values()])
@@ -494,14 +532,14 @@ order by dt desc
             self.init_migration(tablenames, dataset)
             with self.datasource as ds:
                 with self.tdforward as fw:
-                    ret = self.sync_schema_process(tablenames, dataset, ds, fw)
-                    mission_cols_list += ret
+                    fieldinfomap = self.sync_schema_process(tablenames, dataset, ds, fw)
+                    fieldinfomap_total.update(fieldinfomap)
         
         self.log.info("----------- synced missing fields -----------------")            
-        self.log.info("%s",mission_cols_list)
+        self.log.info("%s", ujson.dumps(fieldinfomap_total,indent=4))
 
     def sync_schema_process(self, tablenames, dataset, ds, fw):
-        mission_cols_list = []
+        fieldinfomap = {}
         for tablename in tablenames: 
             self.log.info("-------------------------------------------")
             self.log.info("check fields of [%s.%s]", dataset , tablename)
@@ -517,11 +555,13 @@ order by dt desc
             self.log.info("### bigquery : %s",dest_cols)
             self.log.info("### missing : %s",mission_cols)
             
-            mission_cols_list.append(mission_cols)
-
+            fieldinfomap[tablename] = {}
+            fieldinfomap[tablename]["add_before"] = dict([(field.name, field.description) for field in tbl.schema if (field.description or "").startswith("add")])
+            fieldinfomap[tablename]["add"] = mission_cols
+            
         self.log.info("checking all bigqueyr tables (%s) ... ", len(tablenames))
         ds.sync_field_list_src_and_dest(fw)
-        return mission_cols_list
+        return fieldinfomap
         
     def diff_approximate(self):
         return self.diff("count_all")
@@ -647,6 +687,16 @@ def get_config_file_base_name(config_path):
         config_file_base_name = os.path.splitext(config_file_base_name)[0]
     return config_file_base_name
 
+
+def parse_range_list(arg):
+    range_list = []
+    rgroup = arg.range.split("+")
+    for rg in rgroup:
+        r = rg.split(",")
+        range_list.append((int(r[0]),int(r[1]),-1))
+
+    return range_list
+
 def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None, arg=None):
               
     mig = BQMig(config_file, 
@@ -689,18 +739,11 @@ def commander_executer(cmd, config_file, lockname=None, custom_config_dict=None,
         else:
             print "select table like ... [BQMig.py mig DBNAME tablename1 tablename2] ... "
     elif cmd == "run_range":
-        range_list = []
-        rgroup = arg.range.split("+")
-        for rg in rgroup:
-            r = rg.split(",")
-            range_list.append((int(r[0]),int(r[1]),-1))
+        range_list = parse_range_list(arg)
         mig.run_migration_range(tablenames[0], range_list)            
     elif cmd == "run_range_queued":
-        r = arg.range.split(",")
-        pkLower = int(r[0])
-        pkUpper = int(r[1])
-        pk_range = (pkLower, pkUpper, -1)
-        mig.run_migration_range_queued(tablenames[0], pk_range, arg.range_batch_size)            
+        range_list = parse_range_list(arg)        
+        mig.run_migration_range_queued(tablenames[0], range_list, arg.range_batch_size or mig.conf.listsize)            
     elif cmd == "run_with_no_retry":
         mig.run_migration()
     elif cmd == "some":

@@ -589,13 +589,16 @@ class MigrationMetadataManager(MigrationRoot):
         
         return new_range 
     
+    def convert_to_mig_range(self, unsync_pk_range_list):
+        return [(pk_range[0]-1,pk_range[1]) for pk_range in unsync_pk_range_list]
+    
     def validate_pk_sync(self, tablename, forwarder, pk_range = None):
         
         if pk_range is None:
             try:
                 meta = self.meta.get(self.meta.tableName == tablename)
                 pk_range = (meta.firstPk - 1, meta.lastPk, meta.lastPk - meta.firstPk)
-            except DoesNotExist as e:
+            except DoesNotExist:
                 self.log.debug("### Table [%s]'s info not found in meta. re-get." % tablename, exc_info=True)
                 pk_range = self.retrive_pk_range_in_table(tablename)
                 if pk_range is None:
@@ -627,39 +630,47 @@ class MigrationMetadataManager(MigrationRoot):
         
         self.log.info("## Start searching table ... %s.%s ... Range %s" , tablename, pk_name, pk_range)
                 
-        count_pk_range_in_target_callback = forwarder.count_range
+        #count_pk_range_in_target_callback = forwarder.count_range
         
-        unsync_pk_list = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range) 
+        unsync_pk_range_list = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range) 
         
-        self.log.info("!!! UnSync PK Count %s",len(unsync_pk_list))
+        self.log.info("!!! UnSync PK Range Count %s",len(unsync_pk_range_list))
         
-        # 100만건 이상 차이가 나면.... 그냥 다시 하는게 나음.
-        if len(unsync_pk_list) > 1000000:
-            self.log.error("! Unsync Data Count is Too Many. We Recommand Restart Migration...")
-        elif len(unsync_pk_list) > 0:
-            self.log.info("! Start Migration Unsync Data .... %s ~ %s", min(unsync_pk_list),max(unsync_pk_list))
+        #self.execute_mig_unsync_pk_list(unsync_pk_range_list, tablename, pk_range, forwarder)
+        
+        return self.convert_to_mig_range(unsync_pk_range_list)
+    
+    def execute_mig_unsync_pk_list(self, unsync_pk_range_list, tablename, pk_range, forwarder):
+        if len(unsync_pk_range_list) > 0:
+            unsync_pk_range_list_spots = []
+            for rng in unsync_pk_range_list:
+                unsync_pk_range_list_spots.extend(list(rng))
+                    
+            self.log.info("! Start Migration Unsync Data .... %s ~ %s", min(unsync_pk_range_list_spots),max(unsync_pk_range_list_spots))
             log_idx = self.insert_log(tablename, pk_range)
-            datalist = self.select_datalist_in_use_hashlist(tablename, unsync_pk_list)
-            sendrowcnt = forwarder.execute(
-                    MigrationSet(
+            datalist = self.select_datalist_in_use_range_list(tablename, unsync_pk_range_list)
+            migset = MigrationSet(
                                 datalist, 
                                 tablename=tablename, 
                                 pkname= self.pk_map[tablename], 
-                                pk_range=( min(unsync_pk_list),max(unsync_pk_list) ), 
+                                pk_range=( min(unsync_pk_range_list_spots),max(unsync_pk_range_list_spots) ), 
                                 col_type_map = self.col_map[tablename], 
                                 log_idx = log_idx,
                                 update_insert_log_callback = self.update_insert_log
-                                )
-                )
+                                ) 
+            sendrowcnt = forwarder.execute(migset)
+            
+            self.log.info("sync jobId : %s",migset.jobId)
+            self.log.info("sync count : %s",sendrowcnt)
+            return migset.jobId
         else:
             self.log.info("### All Data Row Count is Synced")
-        
-        return unsync_pk_list
-        
+            return ""
+    
     def validate_pk_sync_inner(self, tablename, pk_name, forwarder, pk_range, depth = 1, retry_cnt = 0):
         SELECT_LIMIT = forwarder.SELECT_LIMIT
         MAX_RETRY_VALID_CNT = 3
-        unsync_pk_list = []
+        unsync_pk_range_list = []
 
         if depth == 1 and pk_range[2] > 0:
             datasource_cnt = long( self.count_all(tablename) )
@@ -679,15 +690,15 @@ class MigrationMetadataManager(MigrationRoot):
             if depth > 1:
                 if datasource_cnt == 0:
                     self.log.info("## [%s]: src cnt %s ... dest cnt %s ... in Range %s  ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
-                    src_pk_list = self.select_pk_value_list(tablename, pk_range, pk_name)
-                    unsync_pk_list.extend( src_pk_list )
-                    return unsync_pk_list
+                    #src_pk_list = self.select_pk_value_list(tablename, pk_range, pk_name)
+                    unsync_pk_range_list.extend( pk_range )
+                    return unsync_pk_range_list
                 
                 if target_cnt == 0:
                     self.log.info("## [%s]: src cnt %s ... dest cnt %s ...  in Range %s ... stop requirsive",depth,  datasource_cnt, target_cnt, pk_range)
-                    dest_pk_list = forwarder.select_pk_value_list(tablename, pk_range, pk_name)
-                    unsync_pk_list.extend( dest_pk_list )
-                    return unsync_pk_list
+                    #dest_pk_list = forwarder.select_pk_value_list(tablename, pk_range, pk_name)
+                    unsync_pk_range_list.extend( pk_range )
+                    return unsync_pk_range_list
             
             # 한쪽이 음수면 에러라서 재시도..
             if datasource_cnt < 0 or target_cnt < 0:
@@ -697,7 +708,7 @@ class MigrationMetadataManager(MigrationRoot):
                 else:
                     self.log.info("(!) ERROR when src cnt %s / dest cnt %s ...  waiting 5 second and retry %s",  datasource_cnt, target_cnt, pk_range)
                     time.sleep(5)
-                    return validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range, retry_cnt + 1)
+                    return self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range, retry_cnt + 1)
 
             # 만약 앙쪽모두 100만건 미만으로 나온다면... divive 체크 없이 전체 로딩
             if datasource_cnt < SELECT_LIMIT and target_cnt < SELECT_LIMIT:
@@ -711,13 +722,15 @@ class MigrationMetadataManager(MigrationRoot):
                 self.log.info("### Difference In %s Set Count %s", pk_range, len(diffset))
                 self.log.info("### Difference Set %s ~ %s", min(diffset), max(diffset))
                 
-                unsync_pk_list.extend( list(diffset) )
+                unsync_pk_range_list.extend(   self.zip_array_to_range_list(list(diffset))  )
+                
             else:
                 # 양쪽 다 어느정도 값을 갖고있음에도 불구하고 수치가 틀리면.... 반으로 나ㅇ눠서 비교 .            
                 half_pk = int( (pk_range[1] + pk_range[0]) / 2 )
+                # 절반이 결국 최소값이라면..??   3+4 / 2 = 3
                 if pk_range[0] == half_pk:
-                    unsync_pk_list.append(pk_range[0])
-                    return unsync_pk_list
+                    unsync_pk_range_list.append( (pk_range[0],pk_range[1]) )
+                    return unsync_pk_range_list
                 
                 lower_range = ( pk_range[0], half_pk)
                 upper_range = ( half_pk, pk_range[1])
@@ -729,23 +742,22 @@ class MigrationMetadataManager(MigrationRoot):
                 upper_range_result = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range = upper_range, depth = depth + 1)
                 
                 if len(lower_range_result) > 0:
-                    unsync_pk_list.extend(lower_range_result)
+                    unsync_pk_range_list.extend(lower_range_result)
                 if len(upper_range_result) > 0:  
-                    unsync_pk_list.extend(upper_range_result) 
+                    unsync_pk_range_list.extend(upper_range_result) 
 
-        return unsync_pk_list
+        return unsync_pk_range_list
             
-    def zip_array_to_range_list(self,pk_range):
-        pk_range = list(pk_range)
-        pk_range.append(max(pk_range) + 1)
+    def zip_array_to_range_list(self,unsync_pk_list):
+        unsync_pk_list.append(max(unsync_pk_list))
         
-        minval = pk_range[0]
-        preval = pk_range[0] - 1
+        minval = unsync_pk_list[0]
+        preval = unsync_pk_list[0] - 1
         range_list = []
-        cnt = len(pk_range)
-        for index, val in enumerate(sorted(pk_range)):
+        cnt = len(unsync_pk_list)
+        for index, val in enumerate(sorted(unsync_pk_list)):
             if val != preval + 1 or index + 1 == cnt:
-                range_list.append((minval,pk_range[index-1]))
+                range_list.append((minval,unsync_pk_list[index-1]))
                 minval = val
             preval = val
                 
