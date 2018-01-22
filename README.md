@@ -1,6 +1,6 @@
 # migbq 
 
-RDBMS Table data upload to Bigquery table.
+rdbms-to-bigquery-data-loader
 
 ## Requirement
 
