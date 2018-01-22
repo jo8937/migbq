@@ -96,20 +96,20 @@ out:
 #### (1) Execute
 
 ```bash
-bqmig run config.yml
+migbq run config.yml
 ```
 
 #### (2) Check Job Complete
 
 ```bash
-bqmig check config.yml
+migbq check config.yml
 ```
 
 
 #### (3) Check table count equals  
 
 ```bash
-bqmig sync config.yml
+migbq sync config.yml
 ```
 
 * Primary Key base count check. 
