@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
  
 setup(name='migbq',
-      version='0.0.72',
-      url='https://github.com/jo8937/rdbms-to-bigquery-data-loader',
+      version='0.0.73',
+      url='https://github.com/jo8937/migbq',
       license='MIT',
       author='jo8937',
       author_email='jo8937@gmail.com',
