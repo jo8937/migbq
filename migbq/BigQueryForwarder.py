@@ -351,7 +351,12 @@ WHERE
         job.use_legacy_sql = False 
         job.begin()
         jobList = self.wait_for_jobids([jobId])
-        return jobList
+        res = jobList[0]
+        errors = res._properties.get("status",{}).get("errors",[])
+        if errors:
+            self.log.error("(!) query error # %s # %s", sql, errors)
+            return False
+        return True
 
     def get_job(self, jobId, bq):
         from google.cloud.bigquery.job import _AsyncJob, QueryJob
