@@ -525,7 +525,9 @@ class MigrationMetadataManager(MigrationRoot):
                              .group_by(
                                  self.meta_log.tableName,
                                  self.meta_log.pkUpper,
-                                 self.meta_log.pkLower)\
+                                 self.meta_log.pkLower,
+                                 self.meta_log.pkName
+                                 )\
                              .where((self.meta_log.jobId.is_null() | 
                                      (self.meta_log.jobComplete < 0)) & 
                                     (self.meta_log.tableName == tablename) )
