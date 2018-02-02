@@ -494,19 +494,20 @@ class MigrationMetadataManager(MigrationRoot):
         
         for row in groupbylist:
             if row.cnt > 1:
-                self.log.info("update duplicate [%s] %s ~ %s ::: (%s)",row.tableName, row.pkLower, row.pkUpper, row.cnt)
-        
-        for row in groupbylist:
-            self.log.info("update duplicate [%s] %s ",row.tableName, row.idx)
-            query = self.meta_log.update(jobId = "", pageToken = "duplicated")\
-                                 .where(
-                                     (self.meta_log.jobId.is_null() | 
-                                         (self.meta_log.jobComplete < 0)) & 
-                                     (self.meta_log.tableName == tablename)
-                                     &
-                                     ~(self.meta_log.idx == row.idx)
-                                     )
-            query.execute()
+                self.log.info("update duplicate [%s] %s ~ %s ::: (%s) max idx %s",row.tableName, row.pkLower, row.pkUpper, row.cnt, row.idx)
+                query = self.meta_log.update(jobId = "", pageToken = "duplicated")\
+                                     .where(
+                                         (self.meta_log.jobId.is_null() | 
+                                             (self.meta_log.jobComplete < 0)) & 
+                                         (self.meta_log.tableName == tablename)
+                                         &
+                                         (self.meta_log.pkLower == row.pkLower)
+                                         &
+                                         (self.meta_log.pkUpper == row.pkUpper)
+                                         &
+                                         (self.meta_log.idx <> row.idx)
+                                         )
+                query.execute()
             
     
         
@@ -522,8 +523,7 @@ class MigrationMetadataManager(MigrationRoot):
                              fn.Min(self.meta_log.idx).alias('minpk'),
                              )\
                              .group_by(
-                                 self.meta_log.tableName, 
-                                 self.meta_log.pkName,
+                                 self.meta_log.tableName,
                                  self.meta_log.pkUpper,
                                  self.meta_log.pkLower)\
                              .where((self.meta_log.jobId.is_null() | 
