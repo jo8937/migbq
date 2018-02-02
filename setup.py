@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
  
 setup(name='migbq',
-      version='0.0.73',
+      version='0.0.74',
       url='https://github.com/jo8937/migbq',
       license='MIT',
       author='jo8937',

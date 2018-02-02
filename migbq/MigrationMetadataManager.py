@@ -496,15 +496,19 @@ class MigrationMetadataManager(MigrationRoot):
             if row.cnt > 1:
                 self.log.info("update duplicate [%s] %s ~ %s ::: (%s)",row.tableName, row.pkLower, row.pkUpper, row.cnt)
         
-        query = self.meta_log.update(jobId = "", pageToken = "duplicated")\
-                             .where(
-                                 (self.meta_log.jobId.is_null() | 
-                                     (self.meta_log.jobComplete < 0)) & 
-                                 (self.meta_log.tableName == tablename)
-                                 &
-                                 ~(self.meta_log.idx << [row.idx for row in groupbylist])
-                                 )
-        query.execute()
+        for row in groupbylist:
+            self.log.info("update duplicate [%s] %s ",row.tableName, row.idx)
+            query = self.meta_log.update(jobId = "", pageToken = "duplicated")\
+                                 .where(
+                                     (self.meta_log.jobId.is_null() | 
+                                         (self.meta_log.jobComplete < 0)) & 
+                                     (self.meta_log.tableName == tablename)
+                                     &
+                                     ~(self.meta_log.idx == row.idx)
+                                     )
+            query.execute()
+            
+    
         
     def select_incomplete_range_groupby(self, tablename):
         query = self.meta_log.select(

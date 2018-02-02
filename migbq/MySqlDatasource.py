@@ -5,12 +5,9 @@ import datetime
 import os
 import csv
 import numbers
-import pymssql
-import _mssql
 import gzip
 
 from peewee import *
-from peewee_mssql_custom import MssqlDatabase  
 from migbq.migutils import get_logger
 from sys import exc_info
 
@@ -19,12 +16,6 @@ import logging
 from playhouse.sqlite_ext import PrimaryKeyAutoIncrementField
 #from apache_beam.internal.clients.bigquery.bigquery_v2_messages import Table
 
-# DB-API 이용하는건 PyMssql 이라서... 음 ... 뭘 쓰지.
-# MSSQL
-# http://www.pymssql.org/en/stable/intro.html
-# 
-# https://wiki.python.org/moin/HigherLevelDatabaseProgramming
-# MsSQL / MySQL 에서 테이블을 읽어서 어디론가 보내기 위한...
 from MigrationMetadataManager import MigrationMetadataManager
 from MigrationSet import MigrationSet
 import copy
