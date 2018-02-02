@@ -528,6 +528,7 @@ class MigrationMetadataManager(MigrationRoot):
                                  self.meta_log.pkLower,
                                  self.meta_log.pkName
                                  )\
+                                 .having(fn.Count(self.meta_log.idx) > 1)\
                              .where((self.meta_log.jobId.is_null() | 
                                      (self.meta_log.jobComplete < 0)) & 
                                     (self.meta_log.tableName == tablename) )

@@ -179,6 +179,10 @@ class TestMeta(unittest.TestCase):
         with bigquery as bq: 
             bq.query_standard("delete from `dwtest5.persons9`  where id in (1,3,5,6,101)")
     
+    def test_select_incomplete_range_groupby(self):
+        l = self.mig.select_incomplete_range_groupby("persons8")
+        
+
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
@@ -188,6 +192,6 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMeta.test_remain_day")
 #     sys.argv.append("TestMeta.test_custom_meta")
     #sys.argv.append("TestMeta.test_run_range")
-    sys.argv.append("TestMeta.test_sync")
+    sys.argv.append("TestMeta.test_select_incomplete_range_groupby")
     unittest.main()
     
