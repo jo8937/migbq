@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
  
 setup(name='migbq',
-      version='0.0.75',
+      version='0.0.76',
       url='https://github.com/jo8937/migbq',
       license='MIT',
       author='jo8937',
@@ -13,7 +13,7 @@ setup(name='migbq',
       python_requires=">=2.7",
       install_requires=[
         'ujson>=1.35',
-        'peewee>=2.8.5',
+        'peewee==2.8.5',
         'pymssql>=2.1.1',
         'peewee-mssql>=0.1.0',
         'concurrent-log-handler>=0.9.7',
