@@ -949,6 +949,7 @@ class MigrationMetadataManager(MigrationRoot):
     
     def check_gzip_csv_file_linesize(self, temp_filename):
         try:
+            i = -1
             with gzip.open(temp_filename, 'rb') as f:        
                 for i, l in enumerate(f):
                     pass
@@ -959,63 +960,101 @@ class MigrationMetadataManager(MigrationRoot):
     
     # 마이그레이션이 kill 로 죽었다면, 다음 마이그레이션 시작시 남아있는 로그들을 처리해야함.
     def execute_left_logs(self, tablename, callback=None, conf = None):
-        
+        fileexistslist, notexistslist = self.get_left_logs(tablename, conf)
+        currentMigset = MigrationSet([])
+        try:
+            from BigQueryJobChecker import retry_error_job
+            from multiprocessing import Pool
+            
+            # 파일이 있다면 병렬로 올림
+            process_cnt = 8
+            div_migset_list = self.get_divided_list(fileexistslist, cnt = process_cnt)
+            for i, migset_div in enumerate(div_migset_list, start=1):
+                self.log.info("bigquery load job set... (%s/%s)", i, len(div_migset_list))
+                p = None
+                try:
+                    p = Pool(processes=process_cnt)
+                    
+                    # 각 프로세스 끝날때까지 대기
+                    jobresults = p.map(retry_error_job, tuple(migset_div))
+                    
+                    # 결과를 로그DB에 성공/실패/에러 업데이트 
+                    for m, jobret in enumerate(jobresults):
+                        # 파일로 jobid 업로드 성공했다면 jobid 남김.
+                        if jobret and jobret.cnt > -1: 
+                            self.update_insert_log(jobret.log_idx, 0, jobId=jobret.jobId, checkComplete=2)
+                            self.log.info("file retry ok : %s", jobret )
+                            self.retry_cnt = 0
+                        else:
+                            self.log.error("### file retry error : %s", jobret )
+                            notexistslist.append(migset_div[m])
+                            
+                finally:
+                    if p:
+                        p.close()
+                        p.join()
+            
+            # 파일이 없다면 하나씩 다시 처리        
+            for migset in notexistslist:
+                currentMigset = migset
+                # 파일이 없다면... 데이터 source 에서 다시 읽어서 넣어줌...
+                self.log.info("re-execute ")    
+                #datasource_pk_range = (migset.pk_range[0]-1,migset.pk_range[1])            
+                datasource_pk_range = migset.pk_range
+                sendrowcnt, next_range, datacnt = self.execute_range(migset.tablename, datasource_pk_range, callback, migset.log_idx)
+                self.update_insert_log(migset.log_idx, sendrowcnt)
+                self.retry_cnt = 0
+                 
+        except:
+            self.log.error("error from select_incomplete_range... : %s : %s" % (currentMigset.tablename, currentMigset.pk_range) ,exc_info=True)
+            self.retry_cnt = self.retry_cnt + 1
+            if(self.retry_cnt > self.retry_cnt_limit):
+                self.log.error("! execute_not_complete() retry limit over (%s) : %s : %s" % (self.retry_cnt, currentMigset.tablename, currentMigset.pk_range))
+                raise
+            else:
+                self.log.info("! execute_not_complete() sleep %s and retry... (%s) ...  %s : %s" % (self.retry_cnt, self.retry_cnt, currentMigset.tablename, currentMigset.pk_range))
+                sleep(self.retry_cnt)
+                return self.execute_left_logs(currentMigset.tablename, callback, conf)
+            
+            
+    def get_left_logs(self, tablename, conf = None):
         logList = self.select_incomplete_range_groupby(tablename)
+        fileexistslist = []
+        notexistslist = []
         
         self.log.info("execute_left_logs :: access to migration log :: %s", len(logList))
         
         for l in logList:
-            try:
-                job_idx = l.idx
-                pk_range = (l.pkLower,l.pkUpper)
-                datasource_pk_range = (l.pkLower-1,l.pkUpper)
-
-                # 일단 파일을 미리 생성했는지 봄...                
-                temp_filename = os.path.join(conf.csvpath,"migbq-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
-                if os.path.isfile(temp_filename):
-                    self.log.info("Check CSV FILE ... %s ... ", temp_filename)            
-                    linecount = self.check_gzip_csv_file_linesize(temp_filename)
-                    self.log.info("%s ::: %s / %s", temp_filename, linecount, self.select_size)
-                    if linecount >= self.select_size:
-                        from BigQueryJobChecker import retry_error_job
-                        self.log.info("start upload %s ...", temp_filename)
-                        migset = MigrationSet([], tablename=l.tableName, 
-                                                               pkname=l.pkName, 
-                                                               pk_range=( l.pkLower, l.pkUpper ), 
-                                                               col_type_map = self.col_map[tablename], 
-                                                               log_idx = l.idx,
-                                                               conf = conf
-                                                               )
-                        migset.csvfile = conf.csvpath
-                        migset.csvfile_del_path = conf.csvpath_complete
-                        migset.bq_dataset = conf.datasetname
-                        migset.bq_project = conf.project
-
-                        jobret = retry_error_job( migset )
-                        # 파일로 jobid 업로드 성공했다면 jobid 남김.
-                        if jobret and jobret.cnt > -1: 
-                            self.update_insert_log(job_idx, 0, jobId=jobret.jobId, checkComplete=2)
-                            self.log.info("file retry ok : %s", jobret )
-                            self.retry_cnt = 0
-                            continue
-                        else:
-                            self.log.error("file retry error : %s", jobret )
+            job_idx = l.idx
+            pk_range = (l.pkLower,l.pkUpper)
+            
+            migset = MigrationSet([], tablename=l.tableName, 
+                                                           pkname=l.pkName, 
+                                                           pk_range=( l.pkLower, l.pkUpper ), 
+                                                           col_type_map = self.col_map[tablename], 
+                                                           log_idx = l.idx,
+                                                           conf = conf
+                                                           )
+            migset.csvfile_del_path = conf.csvpath_complete
+            migset.bq_dataset = conf.datasetname
+            migset.bq_project = conf.project
+            migset.csvfile = conf.csvpath
+            
+            # 일단 파일을 미리 생성했는지 봄...                
+            temp_filename = os.path.join(conf.csvpath,"migbq-%s-%s-%s-%s" % (tablename, self.pk_map[tablename], pk_range[0], pk_range[1]))
+            if os.path.isfile(temp_filename):
+                self.log.info("Check CSV FILE ... %s ... ", temp_filename)            
+                linecount = self.check_gzip_csv_file_linesize(temp_filename)
+                self.log.info("%s ::: %s / %s", temp_filename, linecount, self.select_size)
+                if linecount >= self.select_size:
+                    self.log.info("start upload %s ...", temp_filename)
+                    fileexistslist.append(migset)
+                    continue
                 
-                # 파일이 없다면... 데이터 source 에서 다시 읽어서 넣어줌...                
-                sendrowcnt, next_range, datacnt = self.execute_range(l.tableName, datasource_pk_range, callback, job_idx)
-                self.update_insert_log(job_idx, sendrowcnt)
-                self.log.info("db retry ok")
-                self.retry_cnt = 0
-            except:
-                self.log.error("error from select_incomplete_range... : %s : %s" % (l.tableName, pk_range) ,exc_info=True)
-                self.retry_cnt = self.retry_cnt + 1
-                if(self.retry_cnt > self.retry_cnt_limit):
-                    self.log.error("! execute_not_complete() retry limit over (%s) : %s : %s" % (self.retry_cnt, tablename, pk_range))
-                    raise
-                else:
-                    self.log.info(" execute_not_complete() sleep %s and retry... (%s) ...  %s : %s" % (self.retry_cnt, self.retry_cnt, tablename, pk_range))
-                    sleep(self.retry_cnt)
-                    return self.execute_left_logs(l.tableName, callback, conf)
+            # 파일이 없거나 잘못된 파일이라면.. 
+            notexistslist.append(migset)
+        
+        return fileexistslist, notexistslist
             
     def execute_next(self, tablename, callback=None):
         try:

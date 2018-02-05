@@ -39,7 +39,10 @@ class TestMig(TestRoot):
             
     def test_02_retry(self):
         self.make_error_job()
-        commander(["retry", self.configfile])
+        commander(["run", self.configfile])
+        print "----------------- wait for jobId full -------------"
+        self.wait_for_mig_end()
+        print "---------------- mig end --------------------------"
             
     def test_03_sync(self):
         commander(["sync", self.configfile])
@@ -49,6 +52,6 @@ class TestMig(TestRoot):
         
 if __name__ == '__main__':
     #sys.argv.append("TestMig.test_05_meta")
-    sys.argv.append("TestMig.test_01_mig")
+    sys.argv.append("TestMig.test_02_retry")
     unittest.main()
     
