@@ -66,11 +66,11 @@ FROM (
       ROW_NUMBER()
           OVER (PARTITION BY datano)
           row_number,
-  FROM DW_STATS.c2s_game_cash_goods_origin
+  FROM dwtest5.xxx
   where
-    datano > 73545687720
+    datano > 1
     AND
-    datano <= 112281154982
+    datano <= 99999999999999
 )
 WHERE row_number = 1
         """    
