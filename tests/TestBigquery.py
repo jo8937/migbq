@@ -78,6 +78,6 @@ WHERE row_number = 1
             print bq.query_one_row(sql)
                 
 if __name__ == '__main__':
-    sys.argv.append("TestBigquery.test_long_query")
+    sys.argv.append("TestBigquery")
     unittest.main()
                 
