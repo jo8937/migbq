@@ -400,6 +400,7 @@ WHERE
         
         query = self.bq.run_sync_query(sql)
         query.timeout_ms = 300000 
+        #query.timeout_ms = 3000
         query.max_results = 1
         
         if use_legacy:
@@ -407,7 +408,9 @@ WHERE
         
         query.run()
         
-        if not query.complete:
+        if query.complete:
+            rows = query.rows
+        else:
             job = query.job
             job.reload()                          # API rquest
             retry_count = 0
@@ -419,15 +422,13 @@ WHERE
                 retry_count += 1
                 job.reload()                      # API request
     
+            query = job.query_results()
+            rows = query.rows
+    
         if query.errors:
             self.log.error("query not end. state : %s, BQ Error : %s", query.state, query.errors)
             return None
         
-        #query.page_token is not None
-        #len(query.rows) == PAGE_SIZE
-        #rows, total_count, token = query.fetch_data(page_token=token)       # API request
-        rows = query.rows
-        #token = query.page_token
         self.log.info("rows : %s", rows)
         return rows[0]
         
