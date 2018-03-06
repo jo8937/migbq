@@ -671,7 +671,11 @@ def commander(array_command=None):
         # for crontab prevent duplicate process
         import fcntl
         
-        md5key = hashlib.md5( "-".join(tablenames)).hexdigest()
+        if arg.lockname:
+            md5key = hashlib.md5( "-".join(tablenames)+"-"+arg.lockname).hexdigest()
+        else:
+            md5key = hashlib.md5( "-".join(tablenames)).hexdigest()    
+        
         lockfile = "/tmp/bqmig_%s_%s_%s.pid" % (get_config_file_base_name(arg.config_file), cmd, md5key)
         try:
             print "lock file : " + lockfile
