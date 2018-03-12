@@ -17,6 +17,8 @@ from google.cloud import bigquery
 from Forwarder import Forwarder
 from migbq import migutils
 import uuid
+from sys import exc_info
+from google.cloud.exceptions import NotFound
 
 class BigQueryForwarder(Forwarder):
     def __init__(self, **options):
@@ -30,6 +32,10 @@ class BigQueryForwarder(Forwarder):
         self.lastJobId = None
         self.projectId = options["config"].project
         self.csvpath = options.get("csvpath")
+        self.temp_dataset_tablenames = set([])
+        self.RETRY_INTERVAL_SECOND = 10
+        self.RETRY_LIMIT = 60 
+        
         
         if self.csvpath == "": 
             default_csvpath = os.path.join( os.path.dirname(os.path.realpath(__file__)), "csvdata" )
@@ -39,10 +45,15 @@ class BigQueryForwarder(Forwarder):
         if self.csvpath:
             if not os.path.exists(self.csvpath):
                 os.mkdir(self.csvpath)
-            
+                
+        self.conf = options["config"]
+        self.temp_dataset_name = self.conf.source.get("out",{}).get("temp_dataset", self.dataset_name)
+        self.sync_accept_size = self.conf.source.get("out",{}).get("sync_accept_size",1000000)
+
     def __enter__(self):
         self.bq = bigquery.Client(project=self.projectId)
         self.dataset = self.bq.dataset(self.dataset_name)
+        self.temp_dataset = self.bq.dataset(self.temp_dataset_name) 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -303,7 +314,43 @@ class BigQueryForwarder(Forwarder):
         
         return 0 
 
+    def select_table_data_col_value(self,datasetname,tablename,colname):
+        tbl = self.bq.dataset(datasetname).table(tablename)
+        tbl.reload()
+        target_index = -1
+        values = []
+        next_page_token = None
+        while True:
+            res = tbl.fetch_data(max_results=10000, page_token = next_page_token)
+            
+            if target_index < 0:
+                target_index = 0
+                for f in res.schema:
+                    if f.name == colname:
+                        break
+                    target_index += 1   
+            
+            for row in res:
+                values.append(row[target_index])
+                
+            next_page_token = res.next_page_token
+            if next_page_token is None:
+                break
+
+        return values
+            
+            
     def select_pk_value_list(self, tablename, pk_range, pk_name):
+        
+        temp_table = self.get_range_tablename(tablename, pk_range)
+        # 먼저 temp table 이 있는지 조회.
+        if self.bq.dataset(self.temp_dataset_name).table(temp_table).exists():
+            pklist = self.select_table_data_col_value(self.temp_dataset_name, temp_table, pk_name)
+            self.log.info("select tabledata in %s %s ::: size : %s",temp_table, pk_name, len(pklist))
+            return pklist
+        else:
+            self.log.error("NOT Exists Temptable %s.%s", self.temp_dataset_name, temp_table)
+            
         self.log.info("START select_pk_value_list(%s,%s,%s) from BigQuery",tablename, pk_range, pk_name)
         query = """
 SELECT 
@@ -325,7 +372,7 @@ WHERE
         self.log.debug("SQL : %s", query)
         query = self.bq.run_sync_query(query)
         query.timeout_ms = 120000
-        query.max_results = self.SELECT_LIMIT
+        query.max_results = self.sync_accept_size
         query.run()
         
         pklist = []
@@ -361,8 +408,17 @@ WHERE
     def get_job(self, jobId, bq):
         from google.cloud.bigquery.job import _AsyncJob, QueryJob
         job = _AsyncJob(jobId, client=bq)
-        job.reload()
+        self.execute_with_retry(lambda : job.reload())        
         return job
+    
+    def execute_with_retry(self, func):
+        for i in xrange(0, self.RETRY_LIMIT):
+            try:
+                func()
+                break
+            except:
+                self.log.error("error occur, retry after %s second (%s)" % (self.RETRY_INTERVAL_SECOND, i),exc_info=True)
+            time.sleep(self.RETRY_INTERVAL_SECOND)    
     
     def wait_for_jobids(self,jobIdList):
         bq = self.bq
@@ -450,8 +506,149 @@ FROM (
         else:
             self.log.error("query not end...!")
             return -1
+    
+    def count_range(self, tablename, pk_range, pk_name, parent_pk_range=None):
+        forward_cnt = -1
+        for i in xrange(0,self.RETRY_LIMIT):
+            try:
+                forward_cnt = self.count_range_inner(tablename, pk_range, pk_name, parent_pk_range)
+                break
+            except:
+                self.log.error("error bq count range. wait %s second ... and retry (%s)" % (self.RETRY_INTERVAL_SECOND,i), exc_info=True)
+                time.sleep(self.RETRY_INTERVAL_SECOND)
+                
+        if forward_cnt < 0:
+            raise ValueError("Bigquery count_range error. maybe connection error. check log")
         
-    def count_range(self, tablename, pk_range, pk_name):
+        return forward_cnt
+        
+    def count_range_inner(self, tablename, pk_range, pk_name, parent_pk_range):
+        
+        if parent_pk_range is None:
+            parent_pk_range = pk_range
+
+        # 대상 테이블네임
+        temp_tablename = self.get_range_tablename(tablename, pk_range)
+        # 상위 테이블네임
+        parent_tablename = self.get_range_tablename(tablename, parent_pk_range)
+            
+        # 먼저 temp table 이 있는지 조회.
+        range_cnt = self.count_temp_range_table(self.temp_dataset_name, temp_tablename)
+        if range_cnt >= 0:
+            return range_cnt
+        
+        if not self.bq.dataset(self.temp_dataset_name).table(parent_tablename).exists():
+            sql = self.generate_pk_select_insert_sql(self.dataset_name, tablename, parent_pk_range, pk_name)
+            self.log.debug("[Make Origin] BigQuery Range Select Insert SQL : %s",sql)
+            # 최상위 중복 제거 테이블 만듬. 
+            self.select_insert(sql, self.temp_dataset_name, parent_tablename)
+
+        # 상위와 하위 지정이 같다면... 그냥 상위 테이블카운트 위에서 했으니까 그냥 리턴.
+        if pk_range == parent_pk_range:
+            range_cnt = self.count_temp_range_table(self.temp_dataset_name, parent_tablename)
+            if range_cnt >= 0:
+                self.log.info("return parent table count. that equals to temp_tablename ")
+                return range_cnt
+            
+        if not self.bq.dataset(self.temp_dataset_name).table(temp_tablename).exists():
+            sql = self.generate_pk_select_insert_sql(self.temp_dataset_name, parent_tablename, pk_range, pk_name)
+            # 상위테이블에서 일부를 select 해서 범위임시테이블에 넣음.
+            self.log.debug("BQ Range Select Insert SQL : %s",sql)
+            self.select_insert(sql, self.temp_dataset_name, temp_tablename)
+        #self.log.info("pk_range == parent_pk_range. maybe first time of [sync] command. %s %s" % (tablename, pk_range) )
+            
+        # 결과 임시테이블에서 select
+        range_cnt = self.count_temp_range_table(self.temp_dataset_name, temp_tablename)
+        if range_cnt >= 0:
+            self.temp_dataset_tablenames.add(temp_tablename)
+            return range_cnt
+        else:
+            raise ValueError("select insert FAIL :: %s.%s -> %s.%s" % (self.dataset_name, tablename, self.temp_dataset_name, temp_tablename))
+
+    def clear_temp_data(self):
+        self.clear_temp_sync_tables()
+        
+    def clear_temp_sync_tables(self):
+        for tname in self.temp_dataset_tablenames:
+            self.log.info("execute remmove table %s.%s", self.temp_dataset_name, tname)
+            self.bq.dataset(self.temp_dataset_name).table(tname).delete()
+        self.temp_dataset_tablenames.clear()
+    
+    def clear_all_temp_sync_table(self):
+        tables = self.bq.dataset(self.temp_dataset_name).list_tables()
+        for t in tables:
+            self.temp_dataset_tablenames.add(t.name)
+        self.clear_temp_sync_tables()
+            
+    def select_insert(self, sql, datasetname, desttable):
+        jobId = "migbq-" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f") + "-" + str(uuid.uuid4()).replace("-","")
+        job = self.bq.run_async_query(jobId,sql) # QueryJob
+        job.destination = self.bq.dataset(datasetname).table(desttable)
+        job.use_legacy_sql = True
+        job.write_disposition = 'WRITE_TRUNCATE'
+        job.create_disposition = 'CREATE_IF_NEEDED'
+        job.begin() # 백그라운드 job 실행 시작 명령 
+        print "start select insert Job : %s " % jobId
+        self.wait_for_jobids([jobId])
+        return jobId
+
+    def generate_pk_select_insert_sql_not_dedup(self, datasetname, tablename, pk_range, pk_name):
+        sql = """
+  SELECT
+      {pkname}
+  FROM {dataset}.{tablename}  
+  where 
+    {pkname} > {lower}  
+    AND 
+    {pkname} <= {upper}
+""".format(pkname=pk_name, 
+           tablename = tablename, 
+           dataset = datasetname, 
+           lower = pk_range[0], 
+           upper = pk_range[1]) 
+        return sql
+
+    def generate_pk_select_insert_sql(self, datasetname, tablename, pk_range, pk_name):
+        sql = """
+SELECT {pkname}
+FROM (
+  SELECT
+      {pkname},
+      ROW_NUMBER()
+          OVER (PARTITION BY {pkname})
+          row_number,
+  FROM {dataset}.{tablename}  
+  where 
+    {pkname} > {lower}  
+    AND 
+    {pkname} <= {upper}
+)
+WHERE row_number = 1 
+
+""".format(pkname=pk_name, 
+           tablename = tablename, 
+           dataset = datasetname, 
+           lower = pk_range[0], 
+           upper = pk_range[1]) 
+        return sql
+        
+    def get_range_tablename(self,tablename, pk_range):
+        if pk_range and len(pk_range) > 1 and pk_range[0] >= -1 and pk_range[1] >= 0:
+            return "migbqtmp_%s_%s_%s_%s" % (self.dataset_name, tablename, pk_range[0] + 1, pk_range[1])
+        else:
+            self.log.error("invalid pk_range ...")
+            self.log.error(pk_range)
+            return None
+     
+    def count_temp_range_table(self, datasetname, rangetablename):
+        tbl = self.bq.dataset(datasetname).table(rangetablename)
+        try:
+            tbl.reload()
+            return tbl.num_rows
+        except NotFound as e:
+            return -1
+        
+    def count_range_real(self, tablename, pk_range, pk_name):
         sql = """
 SELECT count(*)
 FROM (

@@ -149,7 +149,9 @@ class TestMeta(unittest.TestCase):
 
     def test_sync(self):
         self.create_mission_pk()
+        print "#######################################"
         self.sync_inner()
+        print "#######################################"
         self.sync_inner()
         
     def sync_inner(self):
@@ -161,7 +163,7 @@ class TestMeta(unittest.TestCase):
         bq = BigQueryForwarder(dataset = get_config(getenv("pymig_config_path")).source["out"]["dataset"] , prefix="", config = get_config( getenv("pymig_config_path")  ))
         datasource.log.setLevel(logging.DEBUG)
         bq.log.setLevel(logging.DEBUG)
-        commander(["sync_range",getenv("pymig_config_path"),"--tablenames","persons9","--range","0,10"])
+        commander(["sync_range",getenv("pymig_config_path"),"--tablenames","persons9","--range","0,600"])
         
     def test_run_range(self):
         datasource = MsSqlDatasource(db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
@@ -192,6 +194,6 @@ if __name__ == '__main__':
 #     sys.argv.append("TestMeta.test_remain_day")
 #     sys.argv.append("TestMeta.test_custom_meta")
     #sys.argv.append("TestMeta.test_run_range")
-    sys.argv.append("TestMeta.test_select_incomplete_range_groupby")
+    sys.argv.append("TestMeta.test_sync")
     unittest.main()
     

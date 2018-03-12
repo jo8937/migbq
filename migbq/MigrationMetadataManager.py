@@ -642,6 +642,8 @@ class MigrationMetadataManager(MigrationRoot):
         
         self.log.info("!!! UnSync PK Range Count %s",len(unsync_pk_range_list))
         
+        # forwarder.clear_temp_data() # 과정에서 생성된 임시 데이터/테이블 삭제
+         
         #self.execute_mig_unsync_pk_list(unsync_pk_range_list, tablename, pk_range, forwarder)
         
         return self.convert_to_mig_range(unsync_pk_range_list)
@@ -673,8 +675,8 @@ class MigrationMetadataManager(MigrationRoot):
             self.log.info("### All Data Row Count is Synced")
             return ""
     
-    def validate_pk_sync_inner(self, tablename, pk_name, forwarder, pk_range, depth = 1, retry_cnt = 0):
-        SELECT_LIMIT = forwarder.SELECT_LIMIT
+    def validate_pk_sync_inner(self, tablename, pk_name, forwarder, pk_range, depth = 1, retry_cnt = 0, parent_pk_range=None):
+        SELECT_LIMIT = self.conf.source.get("out",{}).get("sync_accept_size",1000000)
         MAX_RETRY_VALID_CNT = 3
         unsync_pk_range_list = []
 
@@ -683,8 +685,8 @@ class MigrationMetadataManager(MigrationRoot):
             target_cnt = forwarder.retrive_pk_range_in_table(tablename, pk_name)[2]
             self.log.info("count all is approximate value. check all count")
         else:
-            datasource_cnt = self.count_range(tablename, pk_range, pk_name )
-            target_cnt = forwarder.count_range(tablename, pk_range, pk_name )
+            datasource_cnt = self.count_range(tablename, pk_range, pk_name)
+            target_cnt = forwarder.count_range(tablename, pk_range, pk_name, parent_pk_range)
         
         self.log.debug("[%s] pk_range : %s, (1) datasource cnt %s  /  (2) dest cnt %s ", depth, pk_range, datasource_cnt, target_cnt)
         
@@ -725,10 +727,12 @@ class MigrationMetadataManager(MigrationRoot):
                 # 100만건끼리 메모리상에서 diff 비교
                 diffset = set(src_pk_list).symmetric_difference(set(dest_pk_list))
                 
-                self.log.info("### Difference In %s Set Count %s", pk_range, len(diffset))
-                self.log.info("### Difference Set %s ~ %s", min(diffset), max(diffset))
-                
-                unsync_pk_range_list.extend(   self.zip_array_to_range_list(list(diffset))  )
+                if len(diffset) > 0:
+                    self.log.info("### Difference In %s Set Count %s", pk_range, len(diffset))
+                    self.log.info("### Difference Set %s ~ %s", min(diffset), max(diffset))
+                    unsync_pk_range_list.extend(   self.zip_array_to_range_list(list(diffset))  )
+                else:
+                    self.log.error("### Difference Set Are Empty %s / %s ",src_pk_list,dest_pk_list)
                 
             else:
                 # 양쪽 다 어느정도 값을 갖고있음에도 불구하고 수치가 틀리면.... 반으로 나ㅇ눠서 비교 .            
@@ -744,8 +748,8 @@ class MigrationMetadataManager(MigrationRoot):
                 self.log.info("[%s] Start count src ... Count %s , Reduce Range %s to %s ... ",depth , datasource_cnt, pk_range, lower_range)
                 self.log.info("[%s] Start count dest .. Count %s , Reduce Range %s to %s ... ",depth, target_cnt , pk_range, upper_range)
 
-                lower_range_result = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range = lower_range, depth = depth + 1)
-                upper_range_result = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range = upper_range, depth = depth + 1)
+                lower_range_result = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range = lower_range, depth = depth + 1, parent_pk_range = pk_range)
+                upper_range_result = self.validate_pk_sync_inner(tablename, pk_name, forwarder, pk_range = upper_range, depth = depth + 1, parent_pk_range = pk_range)
                 
                 if len(lower_range_result) > 0:
                     unsync_pk_range_list.extend(lower_range_result)
@@ -851,7 +855,7 @@ class MigrationMetadataManager(MigrationRoot):
         self.log.info("!!! count_all() must OVERRIDE")
         return 1
         
-    def count_range(self, tablename, pk_range, pk_name):
+    def count_range(self, tablename, pk_range, pk_name, parent_pk_range=None):
         self.log.info("!!! count_range() must OVERRIDE")
         if 1 in range(pk_range[0], pk_range[1]):
             return 1

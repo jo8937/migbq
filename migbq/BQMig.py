@@ -285,15 +285,24 @@ class BQMig(object):
             pk_range_list.append((pk_range[0],pk_range[1],-1))
             
         return pk_range_list
+
+    def get_not_complete_in_queue(self, src, tablename, pk_range_list, batch_size):
+        rows = self.qdb.meta_log.select().where(self.qdb.meta_log.tableName == tablename and self.qdb.meta_log.checkComplete == 0).order_by(self.qdb.meta_log.idx.asc()).execute()
+        return rows
             
     def get_queued_range(self, src, tablename, pk_range_list, batch_size):
         self.init_range_queue_task()
-        try:
-            self.qdb.meta_log.get(self.qdb.meta_log.tableName == tablename)
-        except:
-            self.enqueue_range(src, tablename, pk_range_list, batch_size)
+#         try:
+#             self.qdb.meta_log.get(self.qdb.meta_log.tableName == tablename)
+#         except:
+#             self.log.error("not in queue. insert new queue", exc_info=True)
+#             self.enqueue_range(src, tablename, pk_range_list, batch_size)
             
-        rows = self.qdb.meta_log.select().where(self.qdb.meta_log.tableName == tablename and self.qdb.meta_log.checkComplete == 0).order_by(self.qdb.meta_log.idx.asc()).execute()
+        rows = self.get_not_complete_in_queue( src, tablename, pk_range_list, batch_size)
+        if len(rows) == 0:
+            self.enqueue_range(src, tablename, pk_range_list, batch_size)
+            rows = self.get_not_complete_in_queue( src, tablename, pk_range_list, batch_size)
+        
         return rows
     
     def update_dequeue(self, idx, log_idx):
@@ -510,14 +519,24 @@ order by dt desc
                 print "%s,%s,%s" % (row.tableName, row.currentPk, row.lastPk)
                 
     def syncdata(self,tablename,pk_range=None):
+        temp_dataset_tablenames = []
+        unsync_pk_range_list = []
         self.init_migration()
         with self.datasource as ds:
             with self.tdforward as f:
                 unsync_pk_range_list = ds.validate_pk_sync(tablename, f, pk_range)
-                if len(unsync_pk_range_list) > 0:
-                    self.run_migration_range_queued(tablename, unsync_pk_range_list, self.conf.listsize )
-                else:
-                    self.log.info("##### No unsync Pk #####")
+                temp_dataset_tablenames = f.temp_dataset_tablenames
+            
+        if len(unsync_pk_range_list) > 0:
+            self.log.info("##### start unsync pk range migration to queue :: %s #####", len(unsync_pk_range_list))
+            self.run_migration_range_queued(tablename, unsync_pk_range_list, self.conf.listsize )
+            
+            with self.tdforward as f:
+                f.temp_dataset_tablenames = temp_dataset_tablenames
+                f.clear_temp_sync_tables()
+        else:
+            self.log.info("##### No unsync Pk #####")
+        
     
     def sync_schema(self,tablenames):
         self.init_migration()
