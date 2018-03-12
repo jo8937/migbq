@@ -524,6 +524,7 @@ order by dt desc
         self.init_migration()
         with self.datasource as ds:
             with self.tdforward as f:
+                f.clear_all_temp_sync_table(tablename)
                 unsync_pk_range_list = ds.validate_pk_sync(tablename, f, pk_range)
                 temp_dataset_tablenames = f.temp_dataset_tablenames
             

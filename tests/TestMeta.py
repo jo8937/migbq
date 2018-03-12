@@ -16,6 +16,8 @@ from os import getenv
 from migbq.BigQueryJobChecker import *
 from migbq.BQMig import commander, commander_executer, BQMig
 from datetime import datetime
+import time
+from TestRoot import TestRoot
 
 class Struct:
     def __init__(self, **entries):
@@ -32,9 +34,10 @@ def testfunc(migset):
 
 ########################################################################################################################
 
-class TestMeta(unittest.TestCase):
+class TestMeta(TestRoot):
 
     def setUp(self):
+        super(TestMeta,self).setUp()
         self.mig = MigrationMetadataManager(
             db_config = migbq.migutils.get_connection_info(getenv("pymig_config_path")),
             meta_db_type = "mssql",
@@ -151,7 +154,10 @@ class TestMeta(unittest.TestCase):
         self.create_mission_pk()
         print "#######################################"
         self.sync_inner()
-        print "#######################################"
+        print "############################################################################## wait 10 second and retry"
+        #time.sleep(10)
+        self.wait_for_mig_end_inner(self.migration.meta_log)
+        print "##############################################################################"
         self.sync_inner()
         
     def sync_inner(self):

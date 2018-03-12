@@ -574,8 +574,15 @@ FROM (
             self.bq.dataset(self.temp_dataset_name).table(tname).delete()
         self.temp_dataset_tablenames.clear()
     
-    def clear_all_temp_sync_table(self):
-        tables = self.bq.dataset(self.temp_dataset_name).list_tables()
+    def clear_all_temp_sync_table(self, tablename):
+        tables = self.bq.dataset(self.temp_dataset_name).list_tables(max_results=65536)
+        for t in tables:
+            if t.name.startswith("migbqtmp_%s_%s_" % (self.dataset_name, tablename)):
+                self.temp_dataset_tablenames.add(t.name)
+        self.clear_temp_sync_tables()
+        
+    def clear_all_temp_sync_table_in_dataset(self):
+        tables = self.bq.dataset(self.temp_dataset_name).list_tables(max_results=65536)
         for t in tables:
             self.temp_dataset_tablenames.add(t.name)
         self.clear_temp_sync_tables()
