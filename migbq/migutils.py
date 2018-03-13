@@ -180,3 +180,18 @@ def divide_queue_range(pk_range, batch_size=500000):
         range_list.append(new_range)
         
     return range_list
+
+def zip_array_to_range_list(unsync_pk_list):
+    unsync_pk_list.append(max(unsync_pk_list))
+    
+    minval = unsync_pk_list[0]
+    preval = unsync_pk_list[0] - 1
+    range_list = []
+    cnt = len(unsync_pk_list)
+    for index, val in enumerate(sorted(unsync_pk_list)):
+        if val != preval + 1 or index + 1 == cnt:
+            range_list.append((minval,unsync_pk_list[index-1]))
+            minval = val
+        preval = val
+            
+    return range_list

@@ -20,7 +20,7 @@ from peewee import *
 
 from peewee_mssql_custom import MssqlDatabase  
 
-from migbq.migutils import get_logger, estimate_bigquery_type
+from migbq.migutils import get_logger, estimate_bigquery_type, zip_array_to_range_list
 from sys import exc_info
 
 from playhouse.migrate import *
@@ -730,7 +730,7 @@ class MigrationMetadataManager(MigrationRoot):
                 if len(diffset) > 0:
                     self.log.info("### Difference In %s Set Count %s", pk_range, len(diffset))
                     self.log.info("### Difference Set %s ~ %s", min(diffset), max(diffset))
-                    unsync_pk_range_list.extend(   self.zip_array_to_range_list(list(diffset))  )
+                    unsync_pk_range_list.extend(   zip_array_to_range_list(list(diffset))  )
                 else:
                     self.log.error("### Difference Set Are Empty %s / %s ",src_pk_list,dest_pk_list)
                 
@@ -757,22 +757,7 @@ class MigrationMetadataManager(MigrationRoot):
                     unsync_pk_range_list.extend(upper_range_result) 
 
         return unsync_pk_range_list
-            
-    def zip_array_to_range_list(self,unsync_pk_list):
-        unsync_pk_list.append(max(unsync_pk_list))
-        
-        minval = unsync_pk_list[0]
-        preval = unsync_pk_list[0] - 1
-        range_list = []
-        cnt = len(unsync_pk_list)
-        for index, val in enumerate(sorted(unsync_pk_list)):
-            if val != preval + 1 or index + 1 == cnt:
-                range_list.append((minval,unsync_pk_list[index-1]))
-                minval = val
-            preval = val
-                
-        return range_list
-                
+                    
     ######################################################################################################
     
     def update_last_pk_in_meta(self):
