@@ -1003,7 +1003,11 @@ class MigrationMetadataManager(MigrationRoot):
                 self.log.info("! execute_not_complete() sleep %s and retry... (%s) ...  %s : %s" % (self.retry_cnt, self.retry_cnt, currentMigset.tablename, currentMigset.pk_range))
                 sleep(self.retry_cnt)
                 return self.execute_left_logs(currentMigset.tablename, callback, conf)
-            
+    
+    def update_first_last(self, tablename, f, l):
+        m = self.meta.get(self.meta.tableName == tablename)
+        p = "old range : %s ~ %s" % (m.firstPk , m.lastPk) 
+        self.meta.update(firstPk = f, lastPk = l, modDate = datetime.datetime.now(), pageTokenCurrent = p).where(self.meta.tableName == tablename).execute()        
             
     def get_left_logs(self, tablename, conf = None):
         logList = self.select_incomplete_range_groupby(tablename)
@@ -1101,9 +1105,24 @@ class MigrationMetadataManager(MigrationRoot):
                 if datacnt == 0:
                     # 빈 지역이 있는지 검색...
                     real_next_range = self.retrive_next_range(tablename, pk_range, sendrowcnt)
+                    # 다음 최소 pk 가 없다면..?
+                    if real_next_range is None:
+                        # 같은 범위를 넣으면 무한루프... 이걸 쓰면 안됨... real_next_range = pk_range
+                        # min max 재검증 후 다시 시작.
+                        mn, mx, ct = self.retrive_pk_range_in_table(tablename)
+                        self.update_first_last(tablename, mn, mx)
+                        if next_range[0] > mx:
+                            self.log.error("!!! STOP migration. Max PK lower then current PK. some error...")
+                            return False
                     
                 self.save_pk_range(tablename, real_next_range, sendrowcnt)
-                return True
+
+                # 실제 다음 범위는 기존에 했던 범위보단 커야함.                
+                if real_next_range[1] > pk_range[1]:
+                    return True
+                else:
+                    self.log.error("!!! STOP migration. Next PK is Lower then Current PK")
+                    return False
             
             # 진짜로 PK 에 더 이상 데이터가 없을다면...
             # 마이그레이션 중단하라는 옵션...

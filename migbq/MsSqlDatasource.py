@@ -415,7 +415,7 @@ WHERE
             
             return tt; 
         else:
-            return next_range;
+            return None;
         
     def count_all(self, tablename, pkname=None):
         sql = """SELECT CAST(p.rows AS float)

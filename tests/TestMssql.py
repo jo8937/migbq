@@ -142,11 +142,17 @@ class TestMssql(unittest.TestCase):
     def test_meta(self):
         print [row.tableName for row in self.datasource.meta.select()]
              
+    def test_next_pk(self):
+        with self.datasource as ds:
+            tablename = "persons9"
+            print ds.retrive_next_range(tablename, (1000,100000), 0)
+            mn, mx, ct = ds.retrive_pk_range_in_table(tablename)
+            ds.update_first_last(tablename, mn, mx)
             
 if __name__ == '__main__':
     #sys.argv.append("TestMigUtils.test_get_config")
 #     sys.argv.append("TestMig.test_00_mig")
 #     sys.argv.append("TestMig.test_01_check")
-    sys.argv.append("TestMssql.test_meta")
+    sys.argv.append("TestMssql.test_next_pk")
     unittest.main()
     
