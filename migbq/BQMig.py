@@ -255,10 +255,14 @@ class BQMig(object):
         return allcnt
     
     def init_range_queue_task(self):
+        
+        tablename_meta = self.conf.source.get("meta",{}).get("queue_meta","migrationmetadata_prepare_meta")
+        tablename = self.conf.source.get("meta",{}).get("queue_table","migrationmetadata_prepare_queue")
+        
         metadb = MigrationMetadataDatabase(self.conf.meta_db_type, 
                                            self.conf.meta_db_config,
-                                           metadata_tablename = "migrationmetadata_prepare_meta", 
-                                           metadata_log_tablename = "migrationmetadata_prepare_queue", log=self.log)
+                                           metadata_tablename = tablename_meta, 
+                                           metadata_log_tablename = tablename, log=self.log)
         metadb.check_and_create_table()
         self.qdb = metadb 
         return metadb

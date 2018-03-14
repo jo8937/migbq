@@ -1105,6 +1105,7 @@ class MigrationMetadataManager(MigrationRoot):
                 if datacnt == 0:
                     # 빈 지역이 있는지 검색...
                     real_next_range = self.retrive_next_range(tablename, pk_range, sendrowcnt)
+                    
                     # 다음 최소 pk 가 없다면..?
                     if real_next_range is None:
                         # 같은 범위를 넣으면 무한루프... 이걸 쓰면 안됨... real_next_range = pk_range
@@ -1114,6 +1115,12 @@ class MigrationMetadataManager(MigrationRoot):
                         if next_range[0] > mx:
                             self.log.error("!!! STOP migration. Max PK lower then current PK. some error...")
                             return False
+                    else:
+                        # real_next_range
+                        if real_next_range[0] > self.get_meta(tablename).lastPk:
+                            self.log.error("!!! retrive range over last pk. stop migration")
+                            return False
+                    
                     
                 self.save_pk_range(tablename, real_next_range, sendrowcnt)
 
